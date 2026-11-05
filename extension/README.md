@@ -10,7 +10,7 @@
 4. <http://127.0.0.1:4173/>를 엽니다. 이미 열린 데모는 새로고침합니다. 기본 목록의 합성 메일 하나(101)에 `합성 분류 가`, `합성 분류 나`가 표시됩니다.
 5. 코드 변경 후 확장 관리 화면의 **새로고침**을 누르고 데모 탭도 새로고침합니다. 중지는 확장을 비활성화/삭제하고 탭을 새로고침합니다.
 
-허용 페이지는 HTTP `127.0.0.1`/`localhost`뿐입니다(Chromium match pattern 특성상 모든 포트). 실제로는 `#demo-root`의 ready/namespace/generation 계약과 `.mail_list`가 있는 합성 데모만 처리합니다. 네이버 및 운영 ESSMT 호스트에는 주입하지 않습니다. `file://`와 HTTPS는 지원하지 않습니다. 페이지와 bridge가 같은 origin이어야 합니다.
+허용 페이지는 HTTP `127.0.0.1`/`localhost`뿐입니다(Chromium match pattern 특성상 모든 포트). 실제로는 `#demo-root`의 ready/namespace/generation 계약과 `.mail_list`가 있는 합성 데모만 처리합니다. 기본 manifest는 네이버 및 운영 ESSMT 호스트에는 주입하지 않습니다. 별도 실험 빌드는 아래를 참고합니다. `file://`와 HTTPS는 지원하지 않습니다. 페이지와 bridge가 같은 origin이어야 합니다.
 
 ## 수동 확인
 
@@ -31,9 +31,10 @@ row.querySelector('a.mail_title_link').setAttribute('href', `/v2/popup/read/0/${
 
 ## 구조와 진단
 
-- `manifest.json`: 격리 world content scripts 세 개와 배지 CSS를 순서대로 로드합니다. 추가 권한, 원격 코드, web-accessible resources 없음.
+- `manifest.json`: 격리 world content scripts 네 개와 배지 CSS를 순서대로 로드합니다. 추가 권한, 원격 코드, web-accessible resources 없음.
 - `identity.js`: 관찰된 상대 경로 `/v2/popup/read/{folderSN}/{mailSN}` 및 단일 `mail-{SN}` 클래스의 엄격한 교차 검사. ID는 문자열로 유지합니다. 데모 참고 구현과 같은 fixture로 테스트하며, 향후 화면 지원은 이 어댑터에서 분리합니다.
 - `bridge.js`: 기존 postMessage v1 계약으로 고유 ID를 사용해 요청합니다. source/origin/channel/version/id와 응답 namespace/generation/스키마를 확인합니다. 응답 누락 시 5초 후 `BRIDGE_TIMEOUT`; 취소·성공·실패 시 listener/timer를 정리합니다. bridge는 공개 합성 데이터 통신이며 인증 경계가 아닙니다.
+- `adapters.js`: Naver의 지원 inbox 경로를 제한하고 격리 world 안에서만 합성 Mock 결과를 계산합니다. 네트워크·페이지 메시지·저장소·매핑 캐시를 사용하지 않습니다.
 - `content.js`: MutationObserver와 데모 contextchange/ready를 관찰합니다. 같은 SN은 한 배치 안에서 한 번만 조회하고 한 번에 최대 100개, 동시 요청은 하나입니다. 캐시는 없고 현재 행 바인딩의 결과만 메모리에 보유합니다. 오류를 자동 반복하지 않습니다.
 - `badges.css`: 확장 소유 요소만 스타일링합니다. 배지는 제목 링크 바로 뒤의 형제 span이며 텍스트로 렌더링합니다. 링크·버튼·체크박스를 감싸거나 이벤트를 가로채지 않습니다.
 
@@ -58,6 +59,22 @@ Linux의 브라우저 시스템 라이브러리가 없으면 `npx playwright ins
 
 ## 한계 / 이슈 #3
 
-실제 네이버 메일의 다른 URL·화면·계정 식별·virtualized DOM·스레드·상세 지원과 호환성은 검증하지 않았습니다. 운영 화면에서의 좁은 너비, 말줄임, 첨부/답장/전달 아이콘, 확대/축소, 접근성 및 배지 수가 많을 때의 가독성은 이슈 #3에서 확인해야 합니다. 관찰된 URL 외 패턴을 추측하여 지원하지 않습니다. 현재 CSS는 데모에서만 검증했으며, 운영 호스트를 manifest에 추가하는 것만으로 지원이 완료되지 않습니다.
+실제 네이버 메일의 다른 URL·화면·계정 식별·virtualized DOM·스레드·상세 지원과 호환성은 검증하지 않았습니다. 운영 화면에서의 좁은 너비, 말줄임, 첨부/답장/전달 아이콘, 확대/축소, 접근성 및 배지 수가 많을 때의 가독성은 이슈 #3에서 확인해야 합니다. 관찰된 URL 외 패턴을 추측하여 지원하지 않습니다. CSS는 데모와 아래 합성 Naver fixture에서만 검증했으며, 운영 호스트를 manifest에 추가하는 것만으로 지원이 완료되지 않습니다.
 
 운영 DB와의 ID 연결, 인증·권한·API, 실제 네트워크 실패, 운영 배포/스토어 등록은 별도 작업입니다. 401/403/offline 등의 테스트는 기존 Mock의 합성 실패입니다. 영구 캐시/태그 편집/메일 수집 기능은 없습니다.
+
+## 실험용 Naver 로컬 Mock 빌드 (이슈 #3)
+
+기본 `extension/manifest.json`은 계속 localhost 데모 전용입니다. 별도 실험 빌드는 다음 명령으로 저장소 밖 임시 폴더에 생성하며, 출력된 경로의 manifest에만 `https://mail.naver.com/*`를 추가합니다.
+
+```sh
+npm run build:experimental-naver
+```
+
+ESSMT 수집 프로필에는 설치하지 않습니다. 별도의 테스트 프로필에서만 출력 폴더를 로드합니다. 이 작업에서 실제 메일 로그인/프로필은 사용하지 않았으며 자동 검증은 임시 Chromium 프로필에 확장을 설치하고 요청을 합성 HTML로 대체합니다. 실제 Naver 호환성을 검증했다는 뜻은 아닙니다. 임시 산출물은 사용 후 삭제할 수 있습니다.
+
+지원 범위는 HTTPS `mail.naver.com`의 정확한 `/v2/folders/0/all` 경로와 하나의 `.mail_list` 루트뿐입니다(쿼리 허용, hash 불허). 다른 화면으로 이동하면 배지와 상태를 지웁니다. Naver에서는 페이지 bridge, postMessage, 외부 서비스, 네트워크, 저장소를 사용하지 않습니다. 격리 world 안에서 현재 배치에 대해서만 합성 결과를 계산합니다. SN 마지막 숫자를 3으로 나눈 나머지가 1이면 `Mock · 합성 태그`, 2이면 매칭되지만 태그 없음, 0이면 미매칭입니다. 운영 DB·계정·실제 분류와 관계없는 테스트 규칙입니다. 식별 불가 행은 조회하지 않습니다. 매핑 캐시는 없으며 루트/URL 변경 시 현재 행 바인딩을 폐기합니다.
+
+데모와 Naver는 렌더러, 최대 100개 고유 SN 배치 및 오래된 응답 차단을 공유합니다. 하위 변경 MutationObserver는 지원 루트 안에만 연결하고 Naver 루트 부모에는 직접 자식 교체만 관찰하며 CSS도 지원 루트 표시와 확장 소유 배지에 한정합니다. Chromium Navigation API와 150ms 컨텍스트 점검으로 URL/루트 교체를 감지합니다. 정기 점검은 컨텍스트가 달라질 때만 행을 다시 검색합니다. Naver 루트 제거/재삽입은 새 수명으로 취급합니다. 부모 자체가 교체되는 경우 정기 점검에서 새 루트를 감지합니다.
+
+`tests/e2e/naver.spec.js`는 합성 inbox에서 태그/빈 태그/미매칭/식별 불가, 중복 SN, 지연 중 재바인딩, 루트 복제 교체, 지원 밖 경로 및 빠른 복귀, 360px 제목/배지/첨부 배치, 선택/읽음/중요 버튼을 검증합니다. 실제 Naver의 controls, 제목 탐색 및 첨부 동작 검증은 별도 테스트 프로필에서 남아 있습니다.
