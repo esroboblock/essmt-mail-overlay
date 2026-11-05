@@ -23,3 +23,7 @@ coverage/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# browser verification artifacts
+test-results/
+playwright-report/
