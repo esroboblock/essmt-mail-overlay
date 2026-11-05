@@ -1,0 +1,25 @@
+# local credentials and environments
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+# captured mail / profile / session data
+*.eml
+*.mbox
+*.har
+*.jsonl
+captures/
+profiles/
+user-data/
+# dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
