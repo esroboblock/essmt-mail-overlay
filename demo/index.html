@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>메일 실험실 · ESSMT Demo</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./src/app.js"></script>
+</head>
+<body>
+<div class="wrap" id="demo-root" data-demo-namespace="demo:naver:account-a" data-demo-generation="0" data-demo-ready="false">
+  <header class="header">
+    <a class="brand" href="./"><span class="brand-mark">M</span> 메일 실험실 <small>ESSMT / DEMO</small></a>
+    <span class="environment"><i></i> 합성 데이터 전용</span>
+  </header>
+  <div class="container">
+    <aside class="sidebar" aria-label="메일함">
+      <div class="workspace-label">DEVELOPMENT WORKSPACE</div>
+      <h1>메일 데모</h1>
+      <p class="sidebar-description">로그인 없이 살펴보는<br>메일 오버레이 테스트 환경</p>
+      <nav>
+        <button data-folder="all" aria-current="page"><span aria-hidden="true">▤</span> 전체메일</button>
+        <button data-folder="inbox"><span aria-hidden="true">↓</span> 받은메일함</button>
+        <button data-folder="sent"><span aria-hidden="true">↗</span> 보낸메일함</button>
+      </nav>
+      <div class="sidebar-note"><strong>모든 내용은 가상입니다.</strong><p>실제 메일 계정이나 외부 API에 연결하지 않습니다.</p><a href="./README.md">실행 및 연동 문서 ↗</a></div>
+    </aside>
+    <main class="contents">
+      <div class="smart_channel"><span>개발 샌드박스</span><span>01 / MAIL DEMO</span></div>
+      <section class="contents_header">
+        <div><h2 id="folder-title">전체메일</h2><p>관찰된 목록 DOM을 바탕으로 만든 가상 메일함입니다.</p></div>
+        <form id="search-form" role="search"><label class="blind" for="search">메일 검색</label><input id="search" type="search" maxlength="500" placeholder="메일 제목 또는 발신자 검색"><button type="submit">검색</button></form>
+      </section>
+      <section class="scenario-panel" aria-label="데모 설정">
+        <div class="panel-heading"><strong>시나리오 제어</strong><span>화면을 바꿔 ID 추출과 비동기 조회를 확인하세요.</span></div>
+        <div class="settings">
+          <label>데이터 시나리오<select id="scenario">
+            <option value="all">전체 fixture · 10행</option><option value="normal">정상 매칭 · 101</option><option value="no-tags">태그 없음 · 102</option><option value="unmatched">미매칭 · 103</option><option value="ambiguous">다중 매칭 · 104</option><option value="duplicate">중복 DOM · 105</option><option value="unidentified">식별 불가 · 3행</option><option value="safe-title">HTML 형태의 제목 · 106</option><option value="thread">합성 대화 · 101 + 102</option><option value="reuse">행 노드 재사용 · 101 ↔ 102</option>
+          </select></label>
+          <label>Mock 응답<select id="fault"><option value="normal">정상 · 80ms</option><option value="slow">응답 지연 · 1.8초</option><option value="401">401 · 인증 필요</option><option value="403">403 · 권한 없음</option><option value="500">500 · 서버 오류</option><option value="offline">오프라인</option><option value="timeout">시간 초과 · 1.2초</option></select></label>
+          <label>데모 계정<select id="account"><option value="demo:naver:account-a">계정 A · fixture</option><option value="demo:naver:account-b">계정 B · 빈 저장소</option></select></label>
+          <button id="reset" class="subtle">초기화</button>
+        </div>
+      </section>
+      <div class="mail_toolbar"><div><button id="refresh">새로고침</button><button id="reuse" hidden>행 재사용 101 ↔ 102</button><span id="mail-status" role="status">목록 준비 중…</span></div><label>페이지당 메일<select id="page-size"><option>10</option><option>5</option><option>2</option></select></label></div>
+      <section id="list-view" class="contents_area is_normal" aria-label="메일 목록">
+        <div id="thread-note" hidden>합성 대화: 아래 두 메일은 각각의 mailSN으로 식별합니다.</div>
+        <div class="list-caption"><span>선택 / 중요 / 읽음</span><span>발신자</span><span>제목</span><span>구분</span></div>
+        <div class="mail_list_wrap"><ul class="mail_list single_line font_small"></ul></div>
+        <p id="empty" hidden>표시할 메일이 없습니다. 검색 조건이나 데모 계정을 확인하세요.</p>
+        <footer class="pagination"><span id="total-count"></span><div><button id="prev" aria-label="이전 페이지">←</button><span id="page-count"></span><button id="next" aria-label="다음 페이지">→</button></div></footer>
+      </section>
+      <section id="detail" hidden aria-label="합성 메일 상세"><button id="back">목록으로</button><h2 id="detail-title"></h2><p id="detail-identity"></p><div class="detail-body">이곳은 합성 메일의 상세 화면입니다.<br>실제 본문과 첨부 파일은 사용하지 않습니다.</div></section>
+      <section class="diagnostics" aria-labelledby="diagnostics-title">
+        <div class="diagnostic-header"><div><span class="eyebrow">MOCK API INSPECTOR</span><h3 id="diagnostics-title">태그 조회 진단</h3></div><button id="lookup" class="primary">현재 메일 태그 조회</button></div>
+        <p>조회 결과는 이 영역에만 표시됩니다. 메일 행의 태그 배지는 후속 확장 프로그램이 삽입합니다.</p>
+        <div class="context-line"><code id="context"></code><span id="lookup-status" role="status">조회 대기</span></div>
+        <pre id="lookup-output" aria-label="Mock 조회 결과"></pre>
+      </section>
+      <footer class="page-footer">ESSMT Mail Overlay <span>독립 개발 데모 · 네이버 공식 서비스가 아닙니다.</span></footer>
+    </main>
+  </div>
+</div>
+<noscript>이 데모에는 JavaScript가 필요합니다. 로그인이나 외부 서비스는 필요하지 않습니다.</noscript>
+</body>
+</html>
