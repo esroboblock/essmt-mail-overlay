@@ -2,7 +2,7 @@
 
 네이버 웹메일 화면 위에 ESSMT의 이메일별 공유 태그를 표시하기 위한 **독립 Chromium 브라우저 확장 프로젝트**입니다.
 
-> **현재 상태: 설계 및 사전조사 문서만 존재합니다.** 확장 프로그램, 조회 API, 스토어 배포물은 아직 구현/등록되지 않았습니다.
+> **현재 상태: 설계·사전조사 문서와 합성 데모 입력 자료만 존재합니다.** 확장 프로그램, 조회 API, 실행 가능한 데모, 스토어 배포물은 아직 구현/등록되지 않았습니다.
 > 이 저장소는 ESSMT의 기존 이메일 수집 확장과 별개입니다.
 
 ## 배경과 목표
@@ -45,7 +45,7 @@
 - 태그 일괄 조회 서비스(`list_tags_for_emails`)와 ESSMT 화면의 태그 조회/부착 기능 구현 확인
 - 네이버 메일 내부 목록 응답의 `mailSN`/`folderSN` 및 ESSMT에 저장된 serial을 이용한 원본 링크 구성 확인
 
-**주의:** 웹메일 화면의 DOM에서 각 행의 `mailSN`을 안정적으로 추출할 수 있는지는 아직 검증되지 않았습니다. 또한 과거 백필 메일 일부의 serial이 NULL일 수 있고, 동일 메시지가 폴더별로 중복된 DB 행으로 존재할 수 있습니다.
+**DOM 관찰 추가:** 2026-11-05 UTC, 열린 받은메일함 목록 한 화면의 80행에서 제목 링크의 popup 경로와 `mail-{mailSN}` 클래스가 일치했습니다. 화면 전환·다른 메일함·상세·노드 재사용에 걸친 안정성은 미검증입니다. 과거 백필 메일 일부의 serial이 NULL일 수 있고, 동일 메시지가 폴더별로 중복된 DB 행으로 존재할 수 있습니다.
 
 ## 문서
 
@@ -54,11 +54,14 @@
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): 구조 제안, 식별자 연결, API·보안 설계
 - [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md): Chrome/Edge 스토어 등록 및 사내 배포 비교
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): 검증 순서와 수용 기준
+- [`docs/research/naver-webmail-dom.md`](docs/research/naver-webmail-dom.md): 읽기 전용 DOM 관찰, 재현 절차와 한계
+- [`docs/research/demo-input-contract.md`](docs/research/demo-input-contract.md): 합성 데모 입력 스키마와 시나리오별 기대 결과
+- [`demo/fixtures/mails.json`](demo/fixtures/mails.json), [`tags.json`](demo/fixtures/tags.json), [`mail-list.fragment.html`](demo/fixtures/mail-list.fragment.html): 실제 메일을 포함하지 않는 오프라인 입력
 
 ## 구현 시작 전 가장 먼저 확인할 것
 
-1. 대상 웹메일이 `mail.naver.com`인지, 별도의 NAVER WORKS 도메인인지 운영 환경에서 확인
-2. 실제 메일 목록·상세 DOM 또는 네트워크 흐름에서 **개별 메일의 `mailSN`**을 안정적으로 얻을 수 있는지 확인
+1. 관찰 대상은 `mail.naver.com`임을 확인했으나, 다른 운영 환경과 NAVER WORKS 지원 여부는 별도 확인
+2. 목록 한 화면의 식별 단서를 바탕으로 다른 화면·화면 전환에서도 **개별 메일의 `mailSN`**을 안정적으로 얻을 수 있는지 확인
 3. ESSMT의 `naver_mail_sn` 보유율·중복 여부를 읽기 전용 집계로 확인
 4. 직원별 ESSMT 인증 및 브라우저/스토어 배포 방식 결정
 

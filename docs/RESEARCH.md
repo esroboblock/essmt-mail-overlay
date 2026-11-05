@@ -98,3 +98,9 @@ https://mail.naver.com/v2/read/{folderSN}/{mailSN}
 | 파이프라인 운영 문서 | `doc/ops/이메일-인입-파이프라인.md` |
 
 이 문서는 위 문서에 접속할 권한이 없어도 핵심 조사 사실을 이해하도록 작성했습니다.
+
+## 8. 후속 DOM 관찰 추가 (2026-11-05 UTC)
+
+위 3절의 역방향 보장 부족과 6절 1번은 최초 코드/문서 조사 당시의 미검증 상태를 기록한 것이다. 이후 기존 로그인 세션의 `/v2/folders/0/all` 한 화면을 DOM만 읽어 관찰했다. 80개 `.mail_item` 행 모두 제목 링크에서 `/v2/popup/read/{folderSN}/{mailSN}` 경로를 확인했고 `mail-{mailSN}` 클래스와 일치했으며, 화면 내 SN은 80개 모두 달랐다. 실제 클릭 결과·다른 화면·SPA 전환·노드 재사용·계정/폴더 간 유일성·현재 운영 DB 매칭은 검증하지 않았다. 기존 `/v2/read` 원문 링크 설계와 이번 popup href 관찰은 구분해야 한다.
+
+관찰 범위·집계 절차·행 구조·상태 변화·배지 위치 후보와 한계는 [DOM 관찰 문서](research/naver-webmail-dom.md)에 정리했다. [데모 입력 계약](research/demo-input-contract.md)과 [합성 fixture](../demo/fixtures/mails.json)는 이를 바탕으로 오프라인 실험을 준비하는 자료이며 실제 데이터나 작동하는 확장이 아니다. 이번 추가 조사에서 내부 목록 API 호출이나 신규 DB 대조는 수행하지 않았다.

@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "namespace": "demo:naver:account-a",
+  "tags": [
+    {"id": "tag-1", "name": "합성 분류 가"},
+    {"id": "tag-2", "name": "합성 분류 나"},
+    {"id": "tag-3", "name": "합성 참고"}
+  ]
+}

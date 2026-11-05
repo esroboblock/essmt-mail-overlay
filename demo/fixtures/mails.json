@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "namespace": "demo:naver:account-a",
+  "messages": [
+    {"mail_sn": "101", "title": "합성 메일 하나", "status": "matched", "candidate_count": 1, "tag_ids": ["tag-1", "tag-2"]},
+    {"mail_sn": "102", "title": "합성 메일 둘", "status": "matched", "candidate_count": 1, "tag_ids": []},
+    {"mail_sn": "103", "title": "합성 메일 셋", "status": "unmatched", "candidate_count": 0, "tag_ids": []},
+    {"mail_sn": "104", "title": "합성 메일 넷", "status": "ambiguous", "candidate_count": 2, "tag_ids": []},
+    {"mail_sn": "105", "title": "합성 중복 행", "status": "matched", "candidate_count": 1, "tag_ids": ["tag-3"]},
+    {"mail_sn": "106", "title": "문자열 <em>합성</em>", "status": "matched", "candidate_count": 1, "tag_ids": ["tag-2"]}
+  ],
+  "dom_rows": [
+    {"row_id": "row-101", "link_path": "/v2/popup/read/0/101", "class_mail_sn": "101", "expected_mail_sn": "101", "expected_status": "matched"},
+    {"row_id": "row-102", "link_path": "/v2/popup/read/0/102", "class_mail_sn": "102", "expected_mail_sn": "102", "expected_status": "matched"},
+    {"row_id": "row-103", "link_path": "/v2/popup/read/0/103", "class_mail_sn": "103", "expected_mail_sn": "103", "expected_status": "unmatched"},
+    {"row_id": "row-104", "link_path": "/v2/popup/read/0/104", "class_mail_sn": "104", "expected_mail_sn": "104", "expected_status": "ambiguous"},
+    {"row_id": "row-105-a", "link_path": "/v2/popup/read/0/105", "class_mail_sn": "105", "expected_mail_sn": "105", "expected_status": "matched"},
+    {"row_id": "row-105-b", "link_path": "/v2/popup/read/1/105", "class_mail_sn": "105", "expected_mail_sn": "105", "expected_status": "matched"},
+    {"row_id": "row-106", "link_path": "/v2/popup/read/0/106", "class_mail_sn": "106", "expected_mail_sn": "106", "expected_status": "matched"},
+    {"row_id": "row-missing", "link_path": null, "class_mail_sn": "107", "expected_mail_sn": null, "expected_status": "unidentified"},
+    {"row_id": "row-malformed", "link_path": "/v2/popup/read/0/invalid", "class_mail_sn": "108", "expected_mail_sn": null, "expected_status": "unidentified"},
+    {"row_id": "row-conflict", "link_path": "/v2/popup/read/0/107", "class_mail_sn": "108", "expected_mail_sn": null, "expected_status": "unidentified"}
+  ]
+}
