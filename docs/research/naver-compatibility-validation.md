@@ -1,21 +1,21 @@
 # 네이버 호환성 검증 — 이슈 #3
 
-검증일: 2026-11-05 KST. 기준 main: `e8d4901ae7c7c4d1e6395a1894c090473195ced5`.
+검증 이력: 2026-11-05 KST 초기 합성 검증, **2026-11-06 KST 실제 DOM 재관찰**. 기준 main: `e8d4901ae7c7c4d1e6395a1894c090473195ced5`.
 
 ## 결론과 증거의 구분
 
-**이번 실행에서 실제 네이버 화면에 MV3 확장이 Mock 태그를 삽입한 성공 증거는 없다.** 기존 개발 호스트가 오프라인이고 별도 로그인 테스트 프로필도 확인되지 않아, 실제 DOM 재관찰·확장 설치·클릭·스크롤·화면 전환을 수행하지 않았다. 이슈 #3의 실제 화면 완료 조건은 미충족이며 이슈를 닫지 않는다.
+**실제 받은메일함 DOM과 식별 함수의 80/80 일치는 재확인했지만, MV3 확장에 의한 실제 Mock 태그 삽입은 여전히 미검증이다.** 11월 6일 es2003 연결이 복구되어 기존 수집 세션을 읽기 전용으로 조사했다. 접근 가능한 CDP에서 분리된 로그인 테스트 탭을 확보하지 못했으므로 확장 설치·주입·클릭·스크롤·화면 전환은 수행하지 않았다. 이슈 #3의 실제 삽입 완료 조건은 미충족이며 이슈를 닫지 않는다. [11월 6일 재관찰](#2026-11-06-kst-읽기-전용-재관찰)을 참고한다.
 
 [기존 DOM 기록](naver-webmail-dom.md)과 ESSMT 비공개 선행 이슈 #234/#235의 결과 댓글을 읽었다. 선행 관찰과 이번 합성 테스트를 혼동하지 않도록 아래에서 구분한다. 비공개 코드·실제 메일 데이터는 이 저장소로 옮기지 않았다.
 
-## 환경 접근 확인 — 이번 실행
+## 환경 접근 확인 — 2026-11-05 초기 실행
 
 - 원본 저장소의 origin과 clean 작업 상태를 확인하고 `git fetch origin` 후 기준 커밋에서 별도 managed worktree 및 `codex/issue-3-naver-compatibility` 브랜치를 만들었다. 원본 체크아웃은 보존했다.
 - 기존 `scripts/cdp-mail/README.md`와 `connect.mjs`를 읽었다. 해당 도구는 기본 CDP `localhost:9222`와 수집 프로필을 사용한다. `connect.mjs`는 제목/URL을 출력하므로 실행하지 않았다. 캡처·설치·reload·커서/인입 조작 스크립트도 실행하지 않았다.
 - 현재 작업 환경의 loopback CDP 접속은 시간 초과였다. 기존 개발 호스트 `es2003`의 SSH는 시간 초과였고 Tailscale peer 상태는 `Online=false`였다. 서비스를 시작하거나 네트워크 설정을 바꾸지 않았다.
 - 연결된 Playwright 도구 브라우저에는 `about:blank` 탭만 있었다. 분리된 로그인 테스트 세션을 확보하지 못했다. 프로필을 복제하거나 쿠키/인증 토큰을 조회하지 않았다.
 
-## 선행 관찰 — 이번 실행의 실측 아님
+## 선행 관찰 — 선행 조사 기록
 
 선행 기록은 일반 `mail.naver.com` 받은메일함 `/v2/folders/0/all`, Chrome 151.0.7922.77 / CDP 1.3을 대상으로 했다. 목록 80행에서 제목 링크 `/v2/popup/read/{folderSN}/{mailSN}`와 `mail-{mailSN}` 클래스가 80/80 일치했다. 제목 링크는 `.mail_inner > .mail_title > a.mail_title_link` 아래에 있고 첨부·미리보기·팝업 요소는 같은 제목 영역의 형제였다.
 
@@ -32,11 +32,11 @@
 | UI | 통제된 레이아웃/동작 | 복잡한 flex·아이콘·읽음/선택 label; live 영향 미검증 |
 | 전환 | 명시적 generation/이벤트 | 실제 SPA·가상화 계약 미검증; 합성 DOM 변이로 방어 로직 검증 |
 
-## 실제 환경 검증표
+## 실제 환경 검증표 — 2026-11-06 갱신
 
-| 항목 | 이번 실행 결과 |
+| 항목 | 최신 결과 |
 | --- | --- |
-| 받은메일함 DOM·mailSN 재확인 | 미검증 — 개발 호스트 오프라인 |
+| 받은메일함 DOM·mailSN 재확인 | **확인** — 80행·고유 SN 80개, href/class 일치 80/80, 확장 식별 함수 결과 80/80 |
 | 실제 MV3 Mock 배지 삽입 | 미검증 — 분리된 로그인 프로필 없음 |
 | 실제 메일별 정확성·태그 없음·미매칭 | 미검증 |
 | 다른 메일함·검색·상세·팝업 | 미검증 |
@@ -77,3 +77,52 @@
 최종 재실행: `npm test` **25/25 통과**, `npm run test:e2e` **38/38 통과**(23.8초). 기존 데모 33개를 모두 유지하고 합성 Naver 4개와 무관한 localhost 회귀 1개를 추가했다. `npm run build:experimental-naver`, 문서 상대 링크 확인, `git diff --check`도 통과했다. 초기 E2E는 로컬 서버 가용성 확인에서 대기해 명시적으로 데모 서버를 시작한 뒤 재실행했다. 개발 중 중복 E2E 실행의 결과물 경합은 순차 재실행으로 해소했으며 위 결과는 단독 전체 실행 결과다.
 
 코드·명세·개인정보 경계 검토에서 주요 결함은 없었다. 실험 빌드의 출력 경계(저장소 root와 하위 경로 거부) 및 문서의 스크립트 개수 지적은 수정하고 회귀 테스트와 재검토를 마쳤다. 최종 Node 테스트에는 빌드 출력 경계/원본 manifest 보존 검증 2개가 포함된다.
+
+
+## 2026-11-06 KST 읽기 전용 재관찰
+
+### 환경과 안전 경계
+
+사용자의 재확인 요청 후 es2003 SSH와 loopback CDP가 응답했다. 기존 `essmt-mail-chrome.service`는 조사 전후 `active`였다. 브라우저는 **Chrome 151.0.7922.77 / CDP 1.3**, 기존 열린 탭은 `https://mail.naver.com`의 `/v2/folders/0/all` 받은메일함 한 개였다. 프로세스의 알려진 profile 플래그를 boolean으로만 검사해 이 연결이 기존 수집 프로필임을 확인했다. 전체 수집 파이프라인의 건강 검증을 수행한 것은 아니다.
+
+다른 접근 가능한 CDP 연결(Chrome 151.0.7922.75)에는 Naver 메일/로그인 탭이 없었다. 그 탭의 내용은 읽지 않았고 이동시키지 않았다. 다른 위치에 테스트 프로필이 전혀 없다는 뜻은 아니며, **이번 조사에서 접근 가능한 분리 로그인 테스트 세션은 확보하지 못했다.** Windows의 기존 로그인 세션을 복제하거나 인증정보를 가져오지 않았다.
+
+임시 probe는 저장소 밖에서 SSH 표준입력으로 Node.js에 전달했다. CDP `Target.getTargets` → 대상 한 개 `attachToTarget` → `DOM.getDocument(depth=0)`, `DOM.querySelectorAll`, `DOM.getAttributes`, `CSS.getComputedStyleForNode`, `DOM.getBoxModel`, `Page.getLayoutMetrics`만 사용하고 detach/연결 종료했다. **Runtime.evaluate, isolated world 생성, 페이지 스크립트·확장 주입, DOM 쓰기, fetch/XHR 또는 Naver API 호출은 하지 않았다.** CDP 연결 확인용 localhost `/json/version`·`/json/list`는 Naver 메일 API와 별개다.
+
+실제 href/class 값은 원격 Node 프로세스 메모리에서만 비교했다. `extension/identity.js`의 동일한 `identifyMail` 함수를 그 Node 프로세스에 로드해 비교했으며, 페이지에 확장을 설치하거나 content script를 실행한 검증은 아니다. 출력은 아래의 집계/허용된 CSS 수치뿐이었다. 실제 SN·메일 텍스트·주소·쿠키·토큰·원본 HTML·네트워크 body·화면 캡처는 공개 파일이나 외부 서비스에 저장/전송하지 않았다.
+
+### 직접 확인한 DOM 집계
+
+| 항목 | 관찰 결과 |
+| --- | --- |
+| `.mail_list` | 1개 |
+| `.mail_list > .mail_item` | 80행 |
+| 각 행의 단일 `a.mail_title_link` | 80/80 |
+| `/v2/popup/read/{folderSN}/{mailSN}` 경로 형식 | 80/80 |
+| 단일 `mail-{mailSN}` 클래스와 링크 SN 일치 | 80/80 |
+| 고유 SN / 확장 식별 함수 성공 | 80개 / 80행 |
+| 링크 누락·다중 링크·형식 오류·충돌 | 0행 — 현재 목록 한 화면의 결과 |
+| `.mail_inner > .mail_title > a.mail_title_link` | 80개 |
+| 제목 영역 하위 첨부 아이콘 | 48개 |
+| 제목 영역 하위 preview / popup 버튼 | 각각 80개 |
+| 목록 내부 선택 / 읽음 / 중요 input | 각각 80개 |
+| 데모 root / 확장 root·배지 표식 | 모두 0개 |
+
+세 차례의 수동 조작 없는 집계에서 같은 건수와 크기를 확인했다. 실제 SN 집합/행 순서의 시점 간 동일성을 비교하지 않았으므로 갱신·재정렬·가상화가 없었다고 단정하지 않는다. 전체메일·보낸메일·검색·상세는 열린 탭이 없어 조사하지 않았다. 클릭하지 않았으므로 제목 링크의 실제 탐색 방식이나 읽음 변경 여부도 확인하지 않았다.
+
+### 현재 레이아웃과 합성 fixture의 차이
+
+viewport는 기존 **800×457**을 유지했다. 행은 708×39px, `.mail_item > .mail`은 flex였다. `.mail_inner`는 content 폭 236px, 오른쪽 padding 8px, `flex: 1 1 0%`였다. 제목 영역은 **236×21px**, `display:flex`, `align-items:flex-start`, `overflow:hidden`이었다.
+
+제목 링크는 `display:block`, `flex:0 1 auto`, `max-width:100%`, `min-width:0`, nowrap/hidden/ellipsis였고 첫 행에서 195×21px였다. 첨부 아이콘은 18×18px와 `position:absolute`, preview/popup은 18×18px, shrink 0이었다. 이 값은 현재 요소에서 읽은 computed style이며 모든 행/반응형/hover 상태의 규격을 뜻하지 않는다.
+
+기존 합성 Naver fixture는 링크를 `flex:1`로 두고 첨부를 일반 flow의 형제로 단순화했다. 따라서 그 fixture의 360px 비겹침 검증은 **실제 제목 말줄임·절대 위치 첨부·preview/popup과 배지가 충돌하지 않는다는 증거가 아니다.** 링크 뒤 형제 컨테이너를 둘 수 있는 DOM 구조는 재확인했지만, 실제 삽입의 시각적 안전성은 별도 로그인 테스트 프로필에서 확인해야 한다. 이 읽기 전용 조사만으로 CSS나 지원 경로를 추측해 확장하지 않았다.
+
+### 갱신된 판정
+
+- 실제 목록의 DOM 식별 계약: **현재 받은메일함 한 화면에서 확인**.
+- 실제 MV3 격리 world·Mock 배지 삽입·메일별 표시 정확성: **미검증**.
+- 원래 메일 UI에 미치는 영향·화면 전환·스크롤·실제 좁은 화면: **미검증**.
+- 실제 API/인증/DB·다른 화면 지원: 기존 비범위/후속 작업 유지.
+
+11월 6일 후속 자동 검증도 `npm test` **25/25**, `npm run test:e2e` **38/38**(23.5초) 통과했다. 문서 상대 링크와 `git diff --check`, 집계/개인정보 및 검증 범위에 대한 별도 문서 검토도 통과했다. 확장 소스는 이번 재관찰에서 변경하지 않았다.

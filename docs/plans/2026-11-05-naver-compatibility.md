@@ -30,3 +30,11 @@ An external Mock service would disclose operational IDs and is excluded. A new p
 - Baseline npm test: 20/20 passing. Baseline full E2E: 33/33 passing after explicit local demo server startup.
 
 - Implementation: separate external experimental build, local synthetic lookup, scoped observer/CSS, route/root invalidation and synthetic installed-MV3 regression tests. Implementer evidence: Node 23/23 and E2E 38/38 passing. Controller fresh verification: Node 23/23, full E2E 38/38 (23.4s), external experimental build and diff check passed. Fresh review approved experimental scope; two minor build-guard/documentation findings fixed and scoped re-review approved. Final Node 25/25; E2E 38/38 (23.8s). No deferred findings. Live gates remain unmet.
+
+## 2026-11-06 follow-up
+
+- es2003 is reachable again; collector service active and Chrome 151.0.7922.77/CDP1.3 inbox present. No profile/session copying or installation.
+- Raw CDP DOM/CSS queries only (no Runtime.evaluate or injected page code): 80 rows, 80 unique SN, 80 href/class matches and 80 successes using the same extension identity function outside browser. Root/parent layout and attachment absolute positioning recorded as aggregate/allowed styles only.
+- No separate authenticated Naver target identified among reachable CDP endpoints. Actual MV3 insertion and interactions remain unverified. No guessed CSS or route expansion from read-only evidence.
+- Update current report/README and PR #6, preserve original offline investigation as historical evidence; run existing automated suites and check public diff.
+- Follow-up verification: Node 25/25 and full E2E 38/38 (23.5s); document links/diff check passed; privacy/accuracy review approved after historical date wording correction. No extension source change.
