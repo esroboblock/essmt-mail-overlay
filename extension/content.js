@@ -1,6 +1,9 @@
 (() => {
-  const { identifyRow, requestTags } = globalThis.ESSMTOverlay;
+  const { identifyRow, requestTags, requestESSMT } = globalThis.ESSMTOverlay;
   const rows = new Map();
+  let mode = null;
+  let root = document.querySelector('#demo-root');
+  if (!root || !['http://127.0.0.1:4173', 'http://localhost:4173'].includes(location.origin)) return;
   let context = null;
   let controller = null;
   let running = false;
@@ -16,7 +19,7 @@
   });
   function write(action) {
     observer.disconnect();
-    try { action(); } finally { observer.observe(document.documentElement, options); }
+    try { action(); } finally { if (root?.isConnected) observer.observe(root, options); }
   }
   function clear(row) {
     row.querySelectorAll('[data-essmt-tags]').forEach(el => el.remove());
@@ -25,8 +28,7 @@
   }
   function forget(row) { write(() => clear(row)); rows.delete(row); }
   function readContext() {
-    const root = document.querySelector('#demo-root');
-    if (!root || root.dataset.demoReady !== 'true') return null;
+    if (!mode || !root?.isConnected || root.dataset.demoReady !== 'true') return null;
     const namespace = root.dataset.demoNamespace;
     const generation = Number(root.dataset.demoGeneration);
     if (!['demo:naver:account-a', 'demo:naver:account-b'].includes(namespace) || !Number.isSafeInteger(generation) || generation < 0) return null;
@@ -100,7 +102,7 @@
     controller = active;
     running = true;
     try {
-      const results = await requestTags(window, captured, messages, { signal: active.signal });
+      const results = await (mode === 'essmt' ? requestESSMT : requestTags)(window, captured, messages, { signal: active.signal });
       for (const [row, binding] of batch) {
         if (!current(row, binding, captured)) continue;
         const result = results.get(binding.identity.mail_sn);
@@ -120,8 +122,45 @@
       void pump();
     }
   }
+  function invalidate() {
+    controller?.abort();
+    for (const row of rows.keys()) forget(row);
+    context = null;
+    scan();
+  }
+  // No tag cache. Poll only ESSMT; a revoked session is detected on the next lookup.
+  setInterval(() => { if (mode === 'essmt') invalidate(); }, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && mode === 'essmt') invalidate(); });
+  let settingsRevision = 0;
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes.mode) return;
+    settingsRevision++;
+    mode = changes.mode.newValue === 'essmt' ? 'essmt' : 'mock';
+    invalidate();
+  });
+  const revision = settingsRevision;
+  chrome.runtime.sendMessage({ type: 'essmt:settings' }).then(reply => {
+    if (revision !== settingsRevision) return;
+    mode = reply?.mode === 'essmt' ? 'essmt' : 'mock';
+    invalidate();
+  }).catch(() => { mode = 'mock'; invalidate(); });
   window.addEventListener('essmt-demo:contextchange', scan);
   window.addEventListener('essmt-demo:ready', scan);
-  observer.observe(document.documentElement, options);
+  // Watch only the root parent's direct children to rebind after root replacement.
+  // All subtree observation remains confined to the active demo root.
+  const rootParent = root.parentElement;
+  const rootObserver = new MutationObserver(() => {
+    const nextRoot = [...rootParent.children].find(child => child.id === 'demo-root') ?? null;
+    if (nextRoot === root) return;
+    controller?.abort();
+    for (const row of rows.keys()) forget(row);
+    observer.disconnect();
+    root = nextRoot;
+    context = null;
+    if (root) observer.observe(root, options);
+    scan();
+  });
+  rootObserver.observe(rootParent, { childList: true });
+  observer.observe(root, options);
   scan();
 })();
