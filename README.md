@@ -2,7 +2,7 @@
 
 네이버 웹메일 화면 위에 ESSMT의 이메일별 공유 태그를 표시하기 위한 **독립 Chromium 브라우저 확장 프로젝트**입니다.
 
-> **현재 상태: 로그인 없는 데모·Mock API와 설치 가능한 MV3 태그 표시 확장이 구현되어 있습니다.** 기본 확장은 로컬 합성 데모용이며, 별도 테스트 빌드로 네이버 받은메일함의 로컬 Mock 어댑터를 시험할 수 있습니다. **실제 받은메일함 80행의 DOM 식별은 재확인했으며, 실제 화면의 삽입·UI 영향은 미검증**입니다. 운영 조회 API·스토어 배포는 후속 범위입니다.
+> **현재 상태: 로그인 없는 데모·Mock API와 설치 가능한 MV3 태그 표시 확장이 구현되어 있습니다.** 기본 확장은 로컬 합성 데모용이며, 별도 테스트 빌드로 네이버 받은메일함의 로컬 Mock 어댑터를 시험할 수 있습니다. **실제 받은메일함 80행의 식별과 MV3 Mock 배지 삽입을 검증했습니다.** 화면·브라우저·좁은 너비의 검증 한계는 [실제 검증 보고서](docs/research/naver-live-mock-validation.md)에 구분했습니다. 운영 조회 API·스토어 배포는 후속 범위입니다.
 > 이 저장소는 ESSMT의 기존 이메일 수집 확장과 별개입니다.
 
 ## 데모 실행
@@ -70,6 +70,7 @@ Chrome의 `chrome://extensions` 또는 Edge의 `edge://extensions`에서 개발�
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): 구조 제안, 식별자 연결, API·보안 설계
 - [`docs/DISTRIBUTION.md`](docs/DISTRIBUTION.md): Chrome/Edge 스토어 등록 및 사내 배포 비교
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): 검증 순서와 수용 기준
+- [`docs/research/naver-live-mock-validation.md`](docs/research/naver-live-mock-validation.md): 실제 로그인 화면의 MV3 Mock 삽입 결과·UI·남은 제한
 - [`docs/research/naver-compatibility-validation.md`](docs/research/naver-compatibility-validation.md): 이슈 #3의 환경 접근 결과, 합성 테스트와 실제 미검증 항목
 - [`docs/research/naver-webmail-dom.md`](docs/research/naver-webmail-dom.md): 읽기 전용 DOM 관찰, 재현 절차와 한계
 - [`docs/research/demo-input-contract.md`](docs/research/demo-input-contract.md): 합성 데모 입력 스키마와 시나리오별 기대 결과
