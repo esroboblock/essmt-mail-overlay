@@ -266,3 +266,14 @@ test('unrelated localhost pages retain their layout and remain inert', async ({ 
   await expect(page.locator('[data-essmt-root], [data-essmt-state]')).toHaveCount(0);
   expect(await page.locator('.essmt-tag').evaluate(el => getComputedStyle(el).paddingLeft)).toBe('0px');
 });
+
+test('replacing the demo root keeps row identity observation active', async ({ page }) => {
+  await ready(page); await scenario(page, 'normal');
+  await page.evaluate(() => {
+    const root = document.querySelector('#demo-root');
+    root.replaceWith(root.cloneNode(true));
+  });
+  await rebind(page, '102');
+  await expect(page.locator('.mail_item')).toHaveAttribute('data-essmt-state', 'no-tags');
+  await expect(page.locator('.essmt-tag')).toHaveCount(0);
+});

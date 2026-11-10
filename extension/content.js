@@ -1,5 +1,9 @@
 (() => {
-  const { identifyRow, requestTags, isNaverInbox, createLocalMock } = globalThis.ESSMTOverlay;
+  const { identifyRow, requestTags, requestESSMT, isNaverInbox, createLocalMock } = globalThis.ESSMTOverlay;
+  const isDemo = ['http://127.0.0.1', 'http://localhost'].includes(location.origin.replace(/:\d+$/, ''));
+  const canUseESSMT = isDemo && location.port === '4173' && Boolean(globalThis.chrome?.storage);
+  if (!isDemo && location.origin !== 'https://mail.naver.com') return;
+  let mode = canUseESSMT ? null : 'mock';
   const rows = new Map();
   const localLookup = createLocalMock();
   let observedRoot = null;
@@ -37,7 +41,7 @@
       if (lists.length !== 1) return null;
       return { adapter: 'naver', root: lists[0], namespace: 'synthetic:naver', generation: `${location.href}:${rootLifetime}` };
     }
-    if (!['http://127.0.0.1', 'http://localhost'].includes(location.origin.replace(/:\d+$/, ''))) return null;
+    if (!isDemo || !mode) return null;
     const root = document.querySelector('#demo-root');
     if (!root || root.dataset.demoReady !== 'true') return null;
     const namespace = root.dataset.demoNamespace;
@@ -92,7 +96,7 @@
       lifecycleObserver.disconnect();
       observedRoot = next?.root ?? null;
       if (observedRoot) { observedRoot.dataset.essmtRoot = next.adapter; observer.observe(observedRoot, options); }
-      if (next?.adapter === 'naver' && observedRoot.parentElement) lifecycleObserver.observe(observedRoot.parentElement, { childList: true });
+      if (observedRoot?.parentElement) lifecycleObserver.observe(observedRoot.parentElement, { childList: true });
       context = next;
     }
     if (!context) return;
@@ -127,7 +131,11 @@
     controller = active;
     running = true;
     try {
-      const results = await (captured.adapter === 'naver' ? localLookup(captured, messages, { signal: active.signal }) : requestTags(window, captured, messages, { signal: active.signal }));
+      const { namespace, generation } = captured;
+      const requestOptions = { signal: active.signal };
+      const results = captured.adapter === 'naver'
+        ? await localLookup(captured, messages, requestOptions)
+        : await (mode === 'essmt' ? requestESSMT : requestTags)(window, { namespace, generation }, messages, requestOptions);
       for (const [row, binding] of batch) {
         if (!current(row, binding, captured)) continue;
         const result = results.get(binding.identity.mail_sn);
@@ -146,6 +154,28 @@
       running = false;
       void pump();
     }
+  }
+  if (canUseESSMT) {
+    function setMode(value) {
+      mode = value === 'essmt' ? 'essmt' : 'mock';
+      controller?.abort();
+      for (const row of rows.keys()) forget(row);
+      context = null;
+      scan();
+    }
+    setInterval(() => { if (mode === 'essmt') setMode(mode); }, 30000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && mode === 'essmt') setMode(mode);
+    });
+    let settingsChanged = false;
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== 'local' || !changes.mode) return;
+      settingsChanged = true;
+      setMode(changes.mode.newValue);
+    });
+    chrome.runtime.sendMessage({ type: 'essmt:settings' }).then(reply => {
+      if (!settingsChanged) setMode(reply?.mode);
+    }).catch(() => { if (!settingsChanged) setMode('mock'); });
   }
   // Chromium Navigation API observes pushState/replaceState in the page world too.
   window.navigation?.addEventListener('currententrychange', scan);

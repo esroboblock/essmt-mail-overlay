@@ -1,6 +1,6 @@
 # ESSMT Mail Overlay: 데모용 MV3 확장
 
-로그인 없는 합성 메일 데모에서만 사용하는 독립 Chromium 확장입니다. 기존 ESSMT 수집 확장과 연결되지 않습니다. 빌드 없이 이 폴더를 그대로 설치합니다. Chrome/Edge 공통 Manifest V3 구조이며 운영 API·인증·스토리지·service worker·외부 라이브러리가 없습니다.
+합성 메일 데모용 독립 Chrome/Edge Manifest V3 확장입니다. 이 폴더를 빌드 없이 설치하면 기본 Mock 모드로 동작합니다. Service Worker가 조회 모드를 관리하고, 확장 옵션에서 선택한 모드는 `chrome.storage.local`에 저장됩니다. 개발 ESSMT 조회는 별도 생성 빌드에서 활성화할 수 있습니다. 네이버 받은메일함용 실험 빌드는 로컬 Mock을 사용합니다.
 
 ## Chrome / Edge 설치 및 실행
 
@@ -31,7 +31,7 @@ row.querySelector('a.mail_title_link').setAttribute('href', `/v2/popup/read/0/${
 
 ## 구조와 진단
 
-- `manifest.json`: 격리 world content scripts 네 개와 배지 CSS를 순서대로 로드합니다. 추가 권한, 원격 코드, web-accessible resources 없음.
+- `manifest.json`: 격리 world content scripts 다섯 개와 배지 CSS를 순서대로 로드합니다. 기본 빌드에는 Service Worker와 옵션 화면이 있으며 조회 방식만 storage 권한으로 보존합니다. 실험용 빌드에서는 이 권한과 Worker, 옵션을 제외합니다. 원격 코드와 web-accessible resources는 없습니다.
 - `identity.js`: 관찰된 상대 경로 `/v2/popup/read/{folderSN}/{mailSN}` 및 단일 `mail-{SN}` 클래스의 엄격한 교차 검사. ID는 문자열로 유지합니다. 데모 참고 구현과 같은 fixture로 테스트하며, 향후 화면 지원은 이 어댑터에서 분리합니다.
 - `bridge.js`: 기존 postMessage v1 계약으로 고유 ID를 사용해 요청합니다. source/origin/channel/version/id와 응답 namespace/generation/스키마를 확인합니다. 응답 누락 시 5초 후 `BRIDGE_TIMEOUT`; 취소·성공·실패 시 listener/timer를 정리합니다. bridge는 공개 합성 데이터 통신이며 인증 경계가 아닙니다.
 - `adapters.js`: Naver의 지원 inbox 경로를 제한하고 격리 world 안에서만 합성 Mock 결과를 계산합니다. 네트워크·페이지 메시지·저장소·매핑 캐시를 사용하지 않습니다.
@@ -61,7 +61,7 @@ Linux의 브라우저 시스템 라이브러리가 없으면 `npx playwright ins
 
 실제 로그인된 네이버 받은메일함의 MV3 Mock 삽입·선택/스크롤·제목 클릭과 800/1280px 배지 기하를 검증했습니다. 다른 화면의 태그 지원, 계정 식별·virtualized DOM·스레드·확대/축소·접근성 및 읽음/중요 직접 토글은 별도 검증이 필요합니다. 360px에서는 원본 데스크톱 UI의 제목 영역 자체가 화면 밖이며 배지도 보이지 않아, 모바일 호환성을 주장하지 않습니다. 지원 경로는 받은메일함으로 유지하며 [실제 검증 보고서](../docs/research/naver-live-mock-validation.md)의 범위를 참고하세요.
 
-운영 DB와의 ID 연결, 인증·권한·API, 실제 네트워크 실패, 운영 배포/스토어 등록은 별도 작업입니다. 401/403/offline 등의 테스트는 기존 Mock의 합성 실패입니다. 영구 캐시/태그 편집/메일 수집 기능은 없습니다.
+실제 네이버 메일과 운영 DB 연결 및 운영 배포/스토어 등록은 별도 작업입니다. 401/403/offline 등의 테스트는 기존 Mock의 합성 실패입니다. 영구 캐시/태그 편집/메일 수집 기능은 없습니다.
 
 ## 실험용 Naver 로컬 Mock 빌드 (이슈 #3)
 
@@ -78,3 +78,62 @@ npm run build:experimental-naver
 데모와 Naver는 렌더러, 최대 100개 고유 SN 배치 및 오래된 응답 차단을 공유합니다. 하위 변경 MutationObserver는 지원 루트 안에만 연결하고 Naver 루트 부모에는 직접 자식 교체만 관찰하며 CSS도 지원 루트 표시와 확장 소유 배지에 한정합니다. Chromium Navigation API와 150ms 컨텍스트 점검으로 URL/루트 교체를 감지합니다. 정기 점검은 컨텍스트가 달라질 때만 행을 다시 검색합니다. Naver 루트 제거/재삽입은 새 수명으로 취급합니다. 부모 자체가 교체되는 경우 정기 점검에서 새 루트를 감지합니다.
 
 `tests/e2e/naver.spec.js`는 합성 inbox에서 태그/빈 태그/미매칭/식별 불가, 중복 SN, 지연 중 재바인딩, 루트 복제 교체, 지원 밖 경로 및 빠른 복귀, 360px 제목/배지/첨부 배치, 선택/읽음/중요 버튼을 검증합니다. 이 합성 테스트 결과와 실제 세션의 검증 결과는 별개입니다. 실제 확인한 동작·배치와 첨부 클릭/읽음·중요 토글 등 미검증 항목은 [실제 검증 보고서](../docs/research/naver-live-mock-validation.md)에 명시했습니다.
+
+## ESSMT 개발 서버 연결 (#7)
+
+소스의 `extension/`는 기본 Mock 전용이며 외부 호스트 권한이 없습니다. 아래 생성 단계는 주소와 namespace를 확장 내부 설정으로 고정하고 해당 HTTPS 호스트 하나에만 권한을 부여합니다. Node.js 22+가 필요합니다. 주소는 끝 슬래시·경로·사용자정보 없이 HTTPS origin만 받습니다. 실제 주소는 공개 파일에 적지 말고 로컬 환경변수로 전달하세요.
+
+```sh
+# 아래는 예약된 합성 예시입니다. 허가된 격리 개발 서버의 값으로 로컬에서만 설정합니다.
+ESSMT_ORIGIN=https://essmt.example.test ESSMT_NAMESPACE=synthetic:naver:team \
+  node scripts/build-extension.mjs
+```
+
+1. 생성된 `dist/extension/`를 압축해제 확장으로 설치합니다. 기본 모드는 여전히 Mock입니다.
+2. 확장 관리 화면에서 실제 확장 ID를 확인해 개발 ESSMT의 `MAIL_OVERLAY_ALLOWED_EXTENSION_ORIGINS`에 `chrome-extension://<확장 ID>`를 정확히 허용합니다. 서버의 namespace와 직원 grant도 별도로 설정해야 합니다. 서버 설정 변경은 #238의 개발 환경 절차를 따릅니다.
+3. 같은 브라우저 프로필에서 개발 ESSMT의 기존 로그인 화면으로 직원 본인 비밀번호 로그인을 합니다. 비밀번호·쿠키·인입 토큰을 확장에 입력하지 않습니다.
+4. 확장 **옵션**에서 `ESSMT 개발 서버`를 선택합니다. `http://127.0.0.1:4173/` 또는 `http://localhost:4173/`의 기존 데모 계정 A에 실제 API 태그를 표시합니다. 계정 B는 연결하지 않으며, 남은 행이 있어도 `ACCOUNT_NOT_BOUND`로 거부합니다. 데모 자체의 진단 패널과 Mock 오류 선택은 계속 Mock 전용입니다.
+5. Mock으로 되돌리면 외부 조회가 중단되고 기존 합성 bridge를 사용합니다. 연결 주소를 바꾸려면 다시 생성하고 확장을 다시 로드합니다. `dist/`는 Git에서 제외되며 공유하거나 커밋하지 않습니다.
+
+Chrome의 압축해제 확장 ID는 경로/공개 key에 영향을 받으므로 설치 경로를 고정하세요. 경로를 옮기거나 Chrome/Edge에서 다시 설치하면 실제 ID를 재확인하고 서버 origin 허용 목록을 맞춥니다. 이 버전은 배포용 key나 스토어 ID를 포함하지 않습니다. 서버의 origin 허용은 직원 인증과 grant를 대체하지 않습니다.
+
+### 요청 및 표시 수명
+
+요청은 Service Worker만 고정된 `/api/browser-overlay/email-tags/lookup`에 JSON POST로 전송합니다. `credentials: include`, `X-ESSMT-Overlay: 1`, `cache: no-store`, redirect 거부, 4.5초 제한을 적용합니다. 서버 namespace는 빌드 설정에서 고정하며 데모의 합성 계정 A와 명시적으로 연결합니다. 페이지가 endpoint·헤더·서버 namespace를 선택하는 bridge는 없습니다. 응답 namespace/전체 결과/태그를 검증한 뒤 데모 context로 정규화합니다. ESSMT 식별자는 int32 범위를 넘으면 요청 전 거부합니다. Mock은 기존 큰 문자열 ID 동작을 유지합니다.
+
+모드·계정·화면·행 연결이 바뀌면 기존 배지와 대기 응답을 무효화합니다. 태그 응답은 저장하지 않습니다. ESSMT 모드에서 30초마다, 그리고 탭이 다시 보일 때 기존 배지를 지우고 재조회합니다. 로그아웃·grant 철회는 다음 조회에서 감지합니다. 배경 탭의 브라우저 타이머 제한 때문에 **즉시 또는 엄격한 30초 내 회수를 보장하지 않습니다**. 즉시 확인하려면 데모 새로고침 버튼을 누르세요. 이미 서버 인증을 통과한 진행 중 요청은 서버가 회수하지 않습니다. 합성 계정 전환은 ESSMT 직원 계정 전환과 별개입니다.
+
+Chrome의 [확장 네트워크 요청](https://developer.chrome.com/docs/extensions/develop/concepts/network-requests) 및 [쿠키 정책](https://developer.chrome.com/docs/extensions/develop/concepts/storage-and-cookies)에 따라 host permission과 같은 프로필의 로그인 세션을 함께 사용합니다. 추가 `cookies` 권한은 없습니다. 직원 브라우저의 타사 쿠키 차단·정책에 따라 실패할 수 있으므로 개별 환경에서 확인해야 합니다. HTTP 허용이나 인증 완화로 우회하지 않습니다.
+
+### 오류 확인
+
+메일 행의 `data-essmt-state="error"` 및 `data-essmt-error`에서 확인합니다. 오류이면 이전 태그는 제거하며 메일 조작은 유지합니다.
+
+| 코드 | 의미/조치 |
+|---|---|
+| `HTTP_401` | 같은 프로필에서 직원 비밀번호 재로그인 후 새로고침 |
+| `HTTP_403` | 직원 grant, 서버 namespace, 확장 origin, 계정 상태 확인 |
+| `HTTP_422` | 서버 요청 계약 불일치 |
+| `HTTP_500`, `HTTP_503` 등 | 서버 오류 또는 API 비활성; 상태값을 보존 |
+| `NOT_CONFIGURED` | 연결 설정이 없는 소스 확장; 로컬 생성 필요 |
+| `ACCOUNT_NOT_BOUND` | 합성 계정 A 외 context; 서버로 전송하지 않음 |
+| `INVALID_REQUEST`, `INVALID_SENDER` | 허용하지 않은 입력·호출자; 서버로 전송하지 않음 |
+| `NETWORK_ERROR`, `NETWORK_TIMEOUT` | 네트워크·TLS·redirect·권한·쿠키 정책 또는 시간 초과 확인 |
+| `INVALID_RESPONSE` | 서버 namespace/스키마/결과 검증 실패 |
+
+Mock의 `UNAUTHORIZED`, `FORBIDDEN`, `SERVER_ERROR`, `OFFLINE`, `TIMEOUT`, `BRIDGE_TIMEOUT`과 실제 HTTP/네트워크 오류를 구분합니다. 서버 오류 본문은 페이지나 로그에 전달하지 않습니다.
+
+### 자동 검증
+
+```sh
+npm ci
+npm test
+npx playwright install chromium
+npm run test:e2e
+```
+
+브라우저 검증에는 임시 자체서명 HTTPS 인증서를 만드는 OpenSSL이 필요합니다. 테스트에서만 인증서 검증을 무시하며 제품 코드는 HTTPS 검증을 유지합니다. `essmt.spec.js`는 실제 MV3 worker·HTTPS·Secure/HttpOnly/SameSite=Lax 합성 쿠키를 사용합니다. 이 테스트만으로 ESSMT 직원 인증 성공을 주장하지 않습니다.
+
+`essmt-live.spec.js`는 격리된 실제 ESSMT 서버가 있을 때만 실행하며 일반 실행에서는 명시적으로 skip합니다. #238의 합성 101(태그 `합성 HTTP 태그`), 102(빈 태그), 103(미매칭), 104(모호함) 데이터를 사용하세요. 로컬 환경변수 `ESSMT_TEST_ORIGIN`(HTTPS), `ESSMT_TEST_NAMESPACE`, `ESSMT_TEST_FULL_NAME`, `ESSMT_TEST_PASSWORD`를 설정해 `npm run test:e2e -- tests/e2e/essmt-live.spec.js`로 실행합니다. 실제 운영 서버/계정에는 실행하지 않습니다. 선택적으로 `ESSMT_TEST_UNGRANTED_NAME`은 같은 합성 비밀번호를 가진 무권한 직원을 검증합니다. 테스트용 공개 DER key(base64)를 `ESSMT_TEST_EXTENSION_KEY`로 주면 임시 확장 ID를 고정할 수 있습니다. 서버에서 해당 ID를 허용해야 합니다. 로그인 trace/screenshot/video를 저장하지 않습니다.
+
+실행 근거와 남은 범위는 [통합 검증 기록](../docs/research/essmt-integration-validation.md)을 참고하세요. 실제 네이버 화면에서는 위 실험 빌드의 로컬 Mock만 지원합니다.
