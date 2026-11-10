@@ -17,6 +17,7 @@ test('local build grants one HTTPS host and keeps source installation Mock-only'
     const manifest = JSON.parse(await readFile(path.join(dir, 'dist/extension/manifest.json')));
     assert.deepEqual(manifest.host_permissions, ['https://essmt.example.test/*']);
     assert.deepEqual(manifest.permissions, ['storage']);
+    assert.deepEqual(manifest.content_scripts.flatMap(script => script.matches), ['http://127.0.0.1/*', 'http://localhost/*']);
     assert.match(await readFile(path.join(dir, 'dist/extension/config.js'), 'utf8'), /synthetic:naver:team/);
     const source = JSON.parse(await readFile(path.join(dir, 'extension/manifest.json')));
     assert.equal(source.host_permissions, undefined);

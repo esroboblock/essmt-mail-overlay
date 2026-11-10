@@ -256,12 +256,15 @@ test('same-ID title-link reinsertion repairs badge placement and duplicate conta
   expect(await page.evaluate(() => window.tagRequests)).toHaveLength(0);
 });
 
-test('unrelated localhost pages retain their DOM and badge-like styles', async ({ page }) => {
-  await page.route('**/unrelated', route => route.fulfill({ contentType: 'text/html', body: '<!doctype html><span data-essmt-tags><span class="essmt-tag">host text</span></span><ul class="mail_list"><li class="mail_item mail-101"><div class="mail_title"><a class="mail_title_link" href="/v2/popup/read/0/101">host link</a></div></li></ul>' }));
+test('unrelated localhost pages retain their layout and remain inert', async ({ page }) => {
+  await page.route('**/unrelated', route => route.fulfill({ contentType: 'text/html', body: '<div class="mail_list"><span data-essmt-tags><span class="essmt-tag">Host element</span></span><li class="mail_item mail-101"><div class="mail_title"><a class="mail_title_link" href="/v2/popup/read/0/101">Host title</a></div></li></div>' }));
   await page.goto('/unrelated');
-  await expect(page.locator('[data-essmt-state]')).toHaveCount(0);
   expect(await page.locator('[data-essmt-tags]').evaluate(el => getComputedStyle(el).display)).toBe('inline');
-  await expect(page.locator('.essmt-tag')).toHaveText('host text');
+  await expect(page.locator('[data-essmt-root], [data-essmt-state]')).toHaveCount(0);
+  expect(await page.locator('.essmt-tag').evaluate(el => getComputedStyle(el).paddingLeft)).toBe('0px');
+  await page.evaluate(() => document.querySelector('.mail_item').append(document.createElement('span')));
+  await expect(page.locator('[data-essmt-root], [data-essmt-state]')).toHaveCount(0);
+  expect(await page.locator('.essmt-tag').evaluate(el => getComputedStyle(el).paddingLeft)).toBe('0px');
 });
 
 test('replacing the demo root keeps row identity observation active', async ({ page }) => {

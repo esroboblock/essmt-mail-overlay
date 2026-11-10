@@ -1,5 +1,7 @@
 # 네이버 웹메일 목록 DOM 관찰
 
+이 문서는 선행 조사 기록이다. **2026-11-06 KST 재관찰에서도 현재 받은메일함 80행의 href/class 및 확장 식별 함수가 80/80 일치했다.** 그 재관찰은 CDP DOM/CSS 읽기만 사용했다. 이후 사용자 추가 허용에 따른 실제 배지 삽입 결과는 [실제 MV3 검증 보고서](naver-live-mock-validation.md)를 참고한다. 이후 이슈 #3 작업의 접근 결과와 실제/합성 검증 구분은 [호환성 검증 기록](naver-compatibility-validation.md)을 참고한다.
+
 관찰일: **2026-11-05 UTC**. 이 문서는 기존 로그인 세션의 목록 DOM을 읽은 관찰 기록이다. 확장 구현·운영 API·전체 화면 호환성 검증은 아직 없다. 예시 데이터는 [데모 입력 계약](demo-input-contract.md)과 [합성 fixture](../../demo/fixtures/mails.json)에만 새로 작성했다.
 
 ## 관찰 범위와 방법

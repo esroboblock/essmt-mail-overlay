@@ -39,7 +39,7 @@ See [extension setup and opt-in live test](../../extension/README.md#essmt-ê°œë°
 
 - Testing used bundled headless Chromium (Google Chrome for Testing 156.0.8078.4 on Linux), not employees' Windows Chrome/Edge policies, manually installed production builds, or a store release.
 - Individual cookie-blocking/enterprise policies, production certificates, stable deployment IDs and operating permissions remain deployment checks. The browser run does not guarantee success for every profile.
-- Actual Naver compatibility, detail/thread screens and operating mail remain issue #3. The demo's own diagnostic panel always uses Mock, even while extension options select ESSMT.
+- The separate [Naver Mock run](naver-live-mock-validation.md) verified badge insertion in an actual inbox. ESSMT lookup from Naver and tag rendering on detail/thread screens remain outside this integration. The demo's own diagnostic panel always uses Mock, even while extension options select ESSMT.
 - Namespace maps one server dataset; switching synthetic demo account is not an ESSMT employee-account selector. Account B cannot query the configured dataset.
 - Actual app 422/5xx and CORS boundary permutations belong to #238's server suite; this branch tests HTTP error handling in the installed extension and the real app's authenticated path.
 

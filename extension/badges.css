@@ -1,5 +1,5 @@
 /* Only extension-owned elements; the host's links and controls retain their styles. */
-#demo-root [data-essmt-tags] {
+[data-essmt-root] [data-essmt-tags] {
   display: inline-flex;
   align-items: center;
   flex: 0 1 auto;
@@ -10,7 +10,7 @@
   overflow: hidden;
   vertical-align: middle;
 }
-#demo-root [data-essmt-tags] > .essmt-tag {
+[data-essmt-root] [data-essmt-tags] > .essmt-tag {
   display: inline-block;
   flex: 0 1 auto;
   min-width: 0;

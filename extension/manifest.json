@@ -12,6 +12,7 @@
       "js": [
         "identity.js",
         "bridge.js",
+        "adapters.js",
         "provider.js",
         "content.js"
       ],
