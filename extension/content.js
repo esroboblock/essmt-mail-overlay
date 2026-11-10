@@ -1,6 +1,13 @@
 (() => {
-  const { identifyRow, requestTags } = globalThis.ESSMTOverlay;
+  const { identifyRow, requestTags, isNaverInbox, createLocalMock } = globalThis.ESSMTOverlay;
   const rows = new Map();
+  const localLookup = createLocalMock();
+  let observedRoot = null;
+  let rootLifetime = 0;
+  const lifecycleObserver = new MutationObserver(records => {
+    if (records.some(record => [...record.removedNodes].some(node => node === observedRoot))) rootLifetime++;
+    scan();
+  });
   let context = null;
   let controller = null;
   let running = false;
@@ -16,7 +23,7 @@
   });
   function write(action) {
     observer.disconnect();
-    try { action(); } finally { observer.observe(document.documentElement, options); }
+    try { action(); } finally { if (observedRoot?.isConnected) observer.observe(observedRoot, options); }
   }
   function clear(row) {
     row.querySelectorAll('[data-essmt-tags]').forEach(el => el.remove());
@@ -25,18 +32,24 @@
   }
   function forget(row) { write(() => clear(row)); rows.delete(row); }
   function readContext() {
+    if (isNaverInbox(location)) {
+      const lists = document.querySelectorAll('.mail_list');
+      if (lists.length !== 1) return null;
+      return { adapter: 'naver', root: lists[0], namespace: 'synthetic:naver', generation: `${location.href}:${rootLifetime}` };
+    }
+    if (!['http://127.0.0.1', 'http://localhost'].includes(location.origin.replace(/:\d+$/, ''))) return null;
     const root = document.querySelector('#demo-root');
     if (!root || root.dataset.demoReady !== 'true') return null;
     const namespace = root.dataset.demoNamespace;
     const generation = Number(root.dataset.demoGeneration);
     if (!['demo:naver:account-a', 'demo:naver:account-b'].includes(namespace) || !Number.isSafeInteger(generation) || generation < 0) return null;
-    return { namespace, generation };
+    return { adapter: 'demo', root, namespace, generation };
   }
-  const sameContext = (a, b) => a?.namespace === b?.namespace && a?.generation === b?.generation;
+  const sameContext = (a, b) => a?.namespace === b?.namespace && a?.generation === b?.generation && a?.root === b?.root;
   const sameIdentity = (a, b) => a?.mail_sn === b?.mail_sn && a?.folder_sn === b?.folder_sn;
   function current(row, binding, captured) {
     return row.isConnected && rows.get(row) === binding && sameContext(captured, readContext()) &&
-      sameIdentity(binding.identity, identifyRow(row)) && row.closest('#demo-root .mail_list') !== null;
+      sameIdentity(binding.identity, identifyRow(row)) && captured.root.contains(row);
   }
   function paint(row, binding) {
     write(() => {
@@ -66,10 +79,24 @@
     if (!sameContext(context, next)) {
       controller?.abort();
       for (const row of rows.keys()) forget(row);
+      // A host may clone/replace a root before we see it. Remove copied owned
+      // output too, including when replacement and route departure coalesce.
+      for (const root of document.querySelectorAll('[data-essmt-root]')) {
+        root.querySelectorAll('[data-essmt-tags]').forEach(el => el.remove());
+        root.querySelectorAll('[data-essmt-state], [data-essmt-error]').forEach(el => {
+          el.removeAttribute('data-essmt-state'); el.removeAttribute('data-essmt-error');
+        });
+        root.removeAttribute('data-essmt-root');
+      }
+      observer.disconnect();
+      lifecycleObserver.disconnect();
+      observedRoot = next?.root ?? null;
+      if (observedRoot) { observedRoot.dataset.essmtRoot = next.adapter; observer.observe(observedRoot, options); }
+      if (next?.adapter === 'naver' && observedRoot.parentElement) lifecycleObserver.observe(observedRoot.parentElement, { childList: true });
       context = next;
     }
     if (!context) return;
-    const visible = new Set(document.querySelectorAll('#demo-root .mail_list .mail_item'));
+    const visible = new Set(context.root.querySelectorAll(context.adapter === 'demo' ? '.mail_list .mail_item' : '.mail_item'));
     for (const row of rows.keys()) if (!visible.has(row)) forget(row);
     for (const row of visible) {
       const identity = identifyRow(row);
@@ -100,7 +127,7 @@
     controller = active;
     running = true;
     try {
-      const results = await requestTags(window, captured, messages, { signal: active.signal });
+      const results = await (captured.adapter === 'naver' ? localLookup(captured, messages, { signal: active.signal }) : requestTags(window, captured, messages, { signal: active.signal }));
       for (const [row, binding] of batch) {
         if (!current(row, binding, captured)) continue;
         const result = results.get(binding.identity.mail_sn);
@@ -120,8 +147,14 @@
       void pump();
     }
   }
+  // Chromium Navigation API observes pushState/replaceState in the page world too.
+  window.navigation?.addEventListener('currententrychange', scan);
+  window.addEventListener('popstate', scan);
+  window.addEventListener('hashchange', scan);
   window.addEventListener('essmt-demo:contextchange', scan);
   window.addEventListener('essmt-demo:ready', scan);
-  observer.observe(document.documentElement, options);
+  // Root-scoped observation plus a small lifecycle poll handles SPA route/root replacement
+  // without observing or styling unrelated document trees.
+  setInterval(() => { if (!sameContext(context, readContext())) scan(); }, 150);
   scan();
 })();

@@ -5,7 +5,7 @@
   "description": "Independent read-only mail tag overlay for the local synthetic ESSMT demo.",
   "content_scripts": [{
     "matches": ["http://127.0.0.1/*", "http://localhost/*"],
-    "js": ["identity.js", "bridge.js", "content.js"],
+    "js": ["identity.js", "bridge.js", "adapters.js", "content.js"],
     "css": ["badges.css"],
     "run_at": "document_idle",
     "world": "ISOLATED"
