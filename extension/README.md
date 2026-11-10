@@ -1,6 +1,6 @@
 # ESSMT Mail Overlay: 데모용 MV3 확장
 
-로그인 없는 합성 메일 데모에서만 사용하는 독립 Chromium 확장입니다. 기존 ESSMT 수집 확장과 연결되지 않습니다. 빌드 없이 이 폴더를 그대로 설치합니다. Chrome/Edge 공통 Manifest V3 구조이며 운영 API·인증·스토리지·service worker·외부 라이브러리가 없습니다.
+합성 메일 데모용 독립 Chrome/Edge Manifest V3 확장입니다. 이 폴더를 빌드 없이 설치하면 기본 Mock 모드로 동작합니다. Service Worker가 조회 모드를 관리하고, 확장 옵션에서 선택한 모드는 `chrome.storage.local`에 저장됩니다. 개발 ESSMT 조회는 별도 생성 빌드에서 활성화할 수 있습니다. 네이버 받은메일함용 실험 빌드는 로컬 Mock을 사용합니다.
 
 ## Chrome / Edge 설치 및 실행
 
