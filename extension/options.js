@@ -6,7 +6,7 @@ chrome.storage.local.get('mode').then(({ mode }) => { select.value = mode === 'e
 if (!globalThis.ESSMT_CONFIG) status.textContent = '현재 확장은 Mock 전용입니다. 연결 설정을 넣어 로컬 확장을 생성하세요.';
 if (globalThis.ESSMT_CONFIG?.naver) {
   document.querySelector('#binding-help').textContent =
-    '전용 프로필에서 창당 받은메일함 또는 전체메일 탭을 하나만 열고 네이버 계정과 ESSMT 데이터셋이 일치할 때만 확인하세요. 페이지나 목록이 바뀌면 다시 확인해야 할 수 있습니다.';
+    '전용 프로필에서 창당 받은메일함 또는 전체메일 탭을 하나만 열고 네이버 계정과 ESSMT 데이터셋이 일치할 때만 확인하세요. 같은 탭에서 받은메일함과 전체메일을 오갈 때는 확인을 유지합니다.';
   confirmInbox.hidden = false;
   confirmInbox.addEventListener('click', async () => {
     if (select.value !== 'essmt') {

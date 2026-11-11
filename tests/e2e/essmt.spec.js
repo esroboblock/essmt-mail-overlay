@@ -131,9 +131,7 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
         row.querySelector('a').setAttribute('href', '/v2/popup/read/0/102');
         root.replaceWith(replacement);
       });
-      await expect(first).not.toHaveAttribute('data-essmt-state', /.+/);
       await expect(badges).toHaveCount(0);
-      await confirm();
       await expect(first).toHaveAttribute('data-essmt-state', 'no-tags');
       await expect(badges).toHaveCount(0);
       await page.evaluate(() => {
@@ -158,19 +156,27 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
       await confirm();
       await expect(badges).toHaveText('HTTPS 합성 태그');
       const beforeAllMail = requests.length;
-      await page.evaluate(url => {
-        history.pushState({}, '', url);
+      const hadStaleBadge = await page.evaluate(url => {
         document.querySelector('[data-row="101"] a').setAttribute('href', '/v2/popup/read/42/101');
+        history.pushState({}, '', url);
+        return Boolean(document.querySelector('[data-essmt-tags]'));
       }, allMail);
+      expect(hadStaleBadge).toBe(false);
       await expect(page).toHaveURL(allMail);
-      await expect(page.locator('[data-essmt-state]')).toHaveCount(0);
-      expect(requests).toHaveLength(beforeAllMail);
-      await confirm();
+      await expect.poll(() => requests.length).toBeGreaterThan(beforeAllMail);
       await expect(badges).toHaveText('HTTPS 합성 태그');
       expect(requests.at(-1).body.messages).toEqual([
         { mail_sn: '101', folder_sn: '42' },
         ...['102', '103', '104'].map(mail_sn => ({ mail_sn, folder_sn: '0' }))
       ]);
+      const beforeInbox = requests.length;
+      await page.evaluate(url => {
+        document.querySelector('[data-row="101"] a').setAttribute('href', '/v2/popup/read/0/101');
+        history.pushState({}, '', url);
+      }, inbox);
+      await expect.poll(() => requests.length).toBeGreaterThan(beforeInbox);
+      await expect(badges).toHaveText('HTTPS 합성 태그');
+      expect(requests.at(-1).body.messages[0]).toEqual({ mail_sn: '101', folder_sn: '0' });
       await login.goto(origin + '/logout');
       await refresh();
       await expect(first).toHaveAttribute('data-essmt-error', 'HTTP_401');

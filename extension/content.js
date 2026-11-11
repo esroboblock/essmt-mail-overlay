@@ -5,7 +5,7 @@
   const canUseESSMT = (isNaver || (isDemo && location.port === '4173')) && Boolean(globalThis.chrome?.storage);
   if (!isDemo && !isNaver) return;
   let mode = canUseESSMT ? null : 'mock';
-  let confirmedInbox = null;
+  let confirmedNaverDocument = false;
   let confirmationEpoch = 0;
   const rows = new Map();
   const localLookup = createLocalMock();
@@ -41,9 +41,7 @@
   function readContext() {
     if (mode && isNaverMailList(location)) {
       const lists = document.querySelectorAll('.mail_list');
-      if (lists.length !== 1 || (mode === 'essmt' &&
-          (confirmedInbox?.root !== lists[0] || confirmedInbox.lifetime !== rootLifetime ||
-            confirmedInbox.pathname !== location.pathname))) return null;
+      if (lists.length !== 1 || (mode === 'essmt' && !confirmedNaverDocument)) return null;
       return { adapter: 'naver', root: lists[0], namespace: naverContext, generation: rootLifetime, url: location.href };
     }
     if (!isDemo || !mode) return null;
@@ -91,7 +89,7 @@
   }
   function scan() {
     const next = readContext();
-    if (isNaver && mode === 'essmt' && !next) confirmedInbox = null;
+    if (confirmedNaverDocument && !isNaverMailList(location)) confirmedNaverDocument = false;
     if (!sameContext(context, next)) {
       controller?.abort();
       for (const row of rows.keys()) forget(row);
@@ -171,7 +169,7 @@
     function setMode(value) {
       const next = value === 'essmt' ? 'essmt' : 'mock';
       if (next !== mode) {
-        confirmedInbox = null;
+        confirmedNaverDocument = false;
         confirmationEpoch++;
       }
       mode = next;
@@ -194,7 +192,7 @@
       if (!settingsChanged) setMode(reply?.mode);
     }).catch(() => { if (!settingsChanged) setMode('mock'); });
     if (isNaver) window.addEventListener('pagehide', () => {
-      confirmedInbox = null;
+      confirmedNaverDocument = false;
       confirmationEpoch++;
       scan();
     });
@@ -211,7 +209,7 @@
       const { pathname } = location;
       const lifetime = rootLifetime;
       const epoch = confirmationEpoch;
-      confirmedInbox = null;
+      confirmedNaverDocument = false;
       scan();
       const removedRoot = record => [...record.removedNodes].some(node => node.contains(root));
       const pendingRoot = new MutationObserver(records => {
@@ -223,7 +221,7 @@
             mode !== 'essmt' || !isNaverMailList(location) || location.pathname !== pathname || rootLifetime !== lifetime ||
             !root.isConnected || document.querySelectorAll('.mail_list').length !== 1 ||
             document.querySelector('.mail_list') !== root) return reply({ ok: false });
-        confirmedInbox = { root, lifetime, pathname };
+        confirmedNaverDocument = true;
         scan();
         reply({ ok: true });
       }).catch(() => reply({ ok: false })).finally(() => pendingRoot.disconnect());

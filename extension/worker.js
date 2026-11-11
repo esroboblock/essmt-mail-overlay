@@ -47,15 +47,13 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       if (type === 'essmt:inbox-document') return config?.naver ? sender.documentId : null;
       if (type === 'essmt:confirm-document') {
         if (!config?.naver || !sender.documentId || pendingConfirmations.get(sender.tab.id) !== sender.documentId) return { ok: false };
-        const pathname = new URL(sender.tab.url).pathname;
-        await chrome.storage.session.set({ [bindingKey(sender.tab.id)]: { documentId: sender.documentId, pathname } });
+        await chrome.storage.session.set({ [bindingKey(sender.tab.id)]: { documentId: sender.documentId } });
         return { ok: true };
       }
       if (config?.naver) {
         const key = bindingKey(sender.tab.id);
         const { [key]: binding } = await chrome.storage.session.get(key);
-        if (!sender.documentId || binding?.documentId !== sender.documentId ||
-            binding.pathname !== new URL(sender.tab.url).pathname) return { ok: false, error: { code: 'ACCOUNT_NOT_BOUND' } };
+        if (!sender.documentId || binding?.documentId !== sender.documentId) return { ok: false, error: { code: 'ACCOUNT_NOT_BOUND' } };
       }
       const result = await lookupESSMT(config, message, sender, chrome.runtime.id);
       const current = await chrome.storage.local.get('mode');
