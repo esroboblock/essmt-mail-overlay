@@ -42,7 +42,8 @@
     if (mode && isNaverMailList(location)) {
       const lists = document.querySelectorAll('.mail_list');
       if (lists.length !== 1 || (mode === 'essmt' &&
-          (confirmedInbox?.root !== lists[0] || confirmedInbox.lifetime !== rootLifetime))) return null;
+          (confirmedInbox?.root !== lists[0] || confirmedInbox.lifetime !== rootLifetime ||
+            confirmedInbox.pathname !== location.pathname))) return null;
       return { adapter: 'naver', root: lists[0], namespace: naverContext, generation: rootLifetime, url: location.href };
     }
     if (!isDemo || !mode) return null;
@@ -207,6 +208,7 @@
       const lists = document.querySelectorAll('.mail_list');
       if (lists.length !== 1) return false;
       const [root] = lists;
+      const { pathname } = location;
       const lifetime = rootLifetime;
       const epoch = confirmationEpoch;
       confirmedInbox = null;
@@ -218,10 +220,10 @@
       pendingRoot.observe(document, { subtree: true, childList: true });
       chrome.runtime.sendMessage({ type: 'essmt:confirm-document' }).then(result => {
         if (!result?.ok || epoch !== confirmationEpoch || pendingRoot.takeRecords().some(removedRoot) ||
-            mode !== 'essmt' || !isNaverMailList(location) || rootLifetime !== lifetime ||
+            mode !== 'essmt' || !isNaverMailList(location) || location.pathname !== pathname || rootLifetime !== lifetime ||
             !root.isConnected || document.querySelectorAll('.mail_list').length !== 1 ||
             document.querySelector('.mail_list') !== root) return reply({ ok: false });
-        confirmedInbox = { root, lifetime };
+        confirmedInbox = { root, lifetime, pathname };
         scan();
         reply({ ok: true });
       }).catch(() => reply({ ok: false })).finally(() => pendingRoot.disconnect());

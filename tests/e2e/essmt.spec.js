@@ -158,7 +158,11 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
       await confirm();
       await expect(badges).toHaveText('HTTPS 합성 태그');
       const beforeAllMail = requests.length;
-      await page.goto(allMail);
+      await page.evaluate(url => {
+        history.pushState({}, '', url);
+        document.querySelector('[data-row="101"] a').setAttribute('href', '/v2/popup/read/42/101');
+      }, allMail);
+      await expect(page).toHaveURL(allMail);
       await expect(page.locator('[data-essmt-state]')).toHaveCount(0);
       expect(requests).toHaveLength(beforeAllMail);
       await confirm();
