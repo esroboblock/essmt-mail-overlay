@@ -1,7 +1,8 @@
 // Isolated-world adapters. The Naver Mock provider keeps IDs in memory.
 (() => {
   function isNaverInbox(location) {
-    return location.origin === 'https://mail.naver.com' && location.pathname === '/v2/folders/0/all' && !location.hash;
+    return location.origin === 'https://mail.naver.com' && !location.hash &&
+      ['/v2/folders/0', '/v2/folders/0/all'].includes(location.pathname);
   }
   function createLocalMock({ delayMs = 250 } = {}) {
     // Pure synthetic mapping, computed per batch; no account IDs or retained cache.

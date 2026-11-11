@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import '../extension/identity.js';
 import '../extension/adapters.js';
 const api = globalThis.ESSMTOverlay;
-test('Naver context is restricted to the observed exact inbox route', () => {
+test('Naver context recognizes both exact inbox routes', () => {
+  assert.equal(api.isNaverInbox(new URL('https://mail.naver.com/v2/folders/0')), true);
+  assert.equal(api.isNaverInbox(new URL('https://mail.naver.com/v2/folders/0?page=2')), true);
+  for (const path of ['/v2/folders/0/', '/v2/folders/0/unread', '/v2/folders/0#mail', '/v2/folders/1', '/v2/read/0/101']) {
+    assert.equal(api.isNaverInbox(new URL(path, 'https://mail.naver.com')), false);
+  }
   for (const href of ['https://mail.naver.com/v2/folders/0/all', 'https://mail.naver.com/v2/folders/0/all?page=2']) assert.equal(api.isNaverInbox(new URL(href)), true);
   for (const href of ['https://mail.naver.com/v2/folders/1/all', 'https://mail.naver.com/v2/folders/0/all/', 'https://evil.test/v2/folders/0/all', 'http://mail.naver.com/v2/folders/0/all']) assert.equal(api.isNaverInbox(new URL(href)), false);
 });

@@ -37,7 +37,7 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
     const page = await context.newPage();
     if (naver) {
       await mountNaverFixture(context);
-      await page.goto(inbox.replace('/0/', '/1/'));
+      await page.goto(new URL('/v2/folders/1/all', inbox).href);
       await expect(page.locator('[data-essmt-state]')).toHaveCount(0);
       await page.evaluate(url => history.pushState({}, '', url), inbox);
       const row = sn => page.locator(`[data-row="${sn}"]`);
