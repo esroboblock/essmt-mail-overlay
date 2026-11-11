@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import https from 'node:https';
 import { buildExtension } from '../../scripts/build-extension.mjs';
-import { inbox, blockRealNaver, mountNaverFixture, refreshNaverFixture } from './naver-essmt-fixture.js';
+import { inbox, allMail, blockRealNaver, mountNaverFixture, refreshNaverFixture } from './naver-essmt-fixture.js';
 
 // Actual HTTPS, Secure/HttpOnly/SameSite=Lax cookie and installed MV3 worker.
 // Synthetic transport server is deliberately distinct from ESSMT employee auth.
@@ -55,7 +55,7 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
       await expect(extraBadges).toHaveCount(0);
       expect(requests).toHaveLength(0);
       await options.locator('#confirm-inbox').click();
-      await expect(options.getByRole('status')).toHaveText('이 창에 받은메일함 탭을 하나만 열고 다시 확인하세요.');
+      await expect(options.getByRole('status')).toHaveText('이 창에 받은메일함 또는 전체메일 탭을 하나만 열고 다시 확인하세요.');
       expect(requests).toHaveLength(0);
       await extraInbox.close();
       await worker.evaluate(() => {
@@ -73,11 +73,11 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
         history.pushState({}, '', url);
       }, inbox);
       await worker.evaluate(() => globalThis.releaseConfirmation());
-      await expect(options.getByRole('status')).toHaveText('이 창에 받은메일함 탭을 하나만 열고 다시 확인하세요.');
+      await expect(options.getByRole('status')).toHaveText('이 창에 받은메일함 또는 전체메일 탭을 하나만 열고 다시 확인하세요.');
       expect(requests).toHaveLength(0);
       const confirm = async () => {
         await options.locator('#confirm-inbox').click();
-        await expect(options.getByRole('status')).toHaveText('현재 받은메일함의 연결을 확인했습니다.');
+        await expect(options.getByRole('status')).toHaveText('현재 메일 목록의 연결을 확인했습니다.');
       };
       await confirm();
       await expect(first).toHaveAttribute('data-essmt-error', 'HTTP_401');
@@ -157,6 +157,16 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
       await expect(badges).toHaveCount(0);
       await confirm();
       await expect(badges).toHaveText('HTTPS 합성 태그');
+      const beforeAllMail = requests.length;
+      await page.goto(allMail);
+      await expect(page.locator('[data-essmt-state]')).toHaveCount(0);
+      expect(requests).toHaveLength(beforeAllMail);
+      await confirm();
+      await expect(badges).toHaveText('HTTPS 합성 태그');
+      expect(requests.at(-1).body.messages).toEqual([
+        { mail_sn: '101', folder_sn: '42' },
+        ...['102', '103', '104'].map(mail_sn => ({ mail_sn, folder_sn: '0' }))
+      ]);
       await login.goto(origin + '/logout');
       await refresh();
       await expect(first).toHaveAttribute('data-essmt-error', 'HTTP_401');

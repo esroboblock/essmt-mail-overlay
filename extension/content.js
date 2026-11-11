@@ -1,5 +1,5 @@
 (() => {
-  const { identifyRow, requestTags, requestESSMT, isNaverInbox, createLocalMock, naverContext, validESSMTSerial } = globalThis.ESSMTOverlay;
+  const { identifyRow, requestTags, requestESSMT, isNaverMailList, createLocalMock, naverContext, validESSMTSerial } = globalThis.ESSMTOverlay;
   const isDemo = ['http://127.0.0.1', 'http://localhost'].includes(location.origin.replace(/:\d+$/, ''));
   const isNaver = location.origin === 'https://mail.naver.com';
   const canUseESSMT = (isNaver || (isDemo && location.port === '4173')) && Boolean(globalThis.chrome?.storage);
@@ -39,7 +39,7 @@
   }
   function forget(row) { write(() => clear(row)); rows.delete(row); }
   function readContext() {
-    if (mode && isNaverInbox(location)) {
+    if (mode && isNaverMailList(location)) {
       const lists = document.querySelectorAll('.mail_list');
       if (lists.length !== 1 || (mode === 'essmt' &&
           (confirmedInbox?.root !== lists[0] || confirmedInbox.lifetime !== rootLifetime))) return null;
@@ -198,7 +198,7 @@
       scan();
     });
     if (isNaver) chrome.runtime.onMessage.addListener((message, sender, reply) => {
-      if (sender.id !== chrome.runtime.id || mode !== 'essmt' || !isNaverInbox(location)) return false;
+      if (sender.id !== chrome.runtime.id || mode !== 'essmt' || !isNaverMailList(location)) return false;
       if (message?.type === 'essmt:inbox-status') {
         chrome.runtime.sendMessage({ type: 'essmt:inbox-document' }).then(reply, () => reply(null));
         return true;
@@ -218,7 +218,7 @@
       pendingRoot.observe(document, { subtree: true, childList: true });
       chrome.runtime.sendMessage({ type: 'essmt:confirm-document' }).then(result => {
         if (!result?.ok || epoch !== confirmationEpoch || pendingRoot.takeRecords().some(removedRoot) ||
-            mode !== 'essmt' || !isNaverInbox(location) || rootLifetime !== lifetime ||
+            mode !== 'essmt' || !isNaverMailList(location) || rootLifetime !== lifetime ||
             !root.isConnected || document.querySelectorAll('.mail_list').length !== 1 ||
             document.querySelector('.mail_list') !== root) return reply({ ok: false });
         confirmedInbox = { root, lifetime };

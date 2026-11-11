@@ -1,7 +1,7 @@
 // Shared pure validation/transport; executed only by the worker in the extension.
 (() => {
   const fail = code => Object.assign(new Error(code), { code });
-  const { isNaverInbox, naverContext, validESSMTSerial } = globalThis.ESSMTOverlay;
+  const { isNaverMailList, naverContext, validESSMTSerial } = globalThis.ESSMTOverlay;
   const keys = (object, allowed) => object && typeof object === 'object' && !Array.isArray(object) && Object.keys(object).every(key => allowed.includes(key));
   function validateConfig(config) {
     try {
@@ -19,7 +19,7 @@
       if (!config?.naver) return ['http://127.0.0.1:4173', 'http://localhost:4173'].includes(url.origin);
       // Chromium keeps sender.url at the initial document URL after pushState.
       return sender.frameId === 0 && url.origin === 'https://mail.naver.com' &&
-        (settingsOnly || isNaverInbox(new URL(sender.tab.url)));
+        (settingsOnly || isNaverMailList(new URL(sender.tab.url)));
     } catch { return false; }
   }
   async function lookupESSMT(config, message, sender, extensionId, fetcher = fetch) {

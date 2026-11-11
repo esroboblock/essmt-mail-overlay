@@ -1,8 +1,8 @@
 // Isolated-world adapters. The Naver Mock provider keeps IDs in memory.
 (() => {
-  function isNaverInbox(location) {
+  function isNaverMailList(location) {
     return location.origin === 'https://mail.naver.com' && !location.hash &&
-      ['/v2/folders/0', '/v2/folders/0/all'].includes(location.pathname);
+      ['/v2/folders/0', '/v2/folders/0/all', '/v2/folders/-1'].includes(location.pathname);
   }
   function createLocalMock({ delayMs = 250 } = {}) {
     // Pure synthetic mapping, computed per batch; no account IDs or retained cache.
@@ -21,5 +21,5 @@
       }, delayMs);
     });
   }
-  Object.assign(globalThis.ESSMTOverlay, { isNaverInbox, createLocalMock, naverContext: 'synthetic:naver' });
+  Object.assign(globalThis.ESSMTOverlay, { isNaverMailList, createLocalMock, naverContext: 'synthetic:naver' });
 })();
