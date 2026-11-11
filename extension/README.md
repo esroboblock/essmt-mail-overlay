@@ -59,7 +59,7 @@ Linux의 브라우저 시스템 라이브러리가 없으면 `npx playwright ins
 
 ## 한계 / 이슈 #3
 
-실제 로그인된 네이버 받은메일함의 MV3 Mock 삽입·선택/스크롤·제목 클릭과 800/1280px 배지 기하를 검증했습니다. 다른 화면의 태그 지원, 계정 식별·virtualized DOM·스레드·확대/축소·접근성 및 읽음/중요 직접 토글은 별도 검증이 필요합니다. 360px에서는 원본 데스크톱 UI의 제목 영역 자체가 화면 밖이며 배지도 보이지 않아, 모바일 호환성을 주장하지 않습니다. 지원 경로는 받은메일함으로 유지하며 [실제 검증 보고서](../docs/research/naver-live-mock-validation.md)의 범위를 참고하세요.
+실제 로그인된 네이버 받은메일함의 MV3 Mock 삽입·선택/스크롤·제목 클릭과 800/1280px 배지 기하를 검증했습니다. 다른 화면의 태그 지원, 계정 식별·virtualized DOM·스레드·확대/축소·접근성 및 읽음/중요 직접 토글은 별도 검증이 필요합니다. 360px에서는 원본 데스크톱 UI의 제목 영역 자체가 화면 밖이며 배지도 보이지 않아, 모바일 호환성을 주장하지 않습니다. 당시 검증한 경로는 받은메일함이며 [실제 검증 보고서](../docs/research/naver-live-mock-validation.md)의 범위를 참고하세요.
 
 실제 네이버 메일과 운영 DB 연결 및 운영 배포/스토어 등록은 별도 작업입니다. 401/403/offline 등의 테스트는 기존 Mock의 합성 실패입니다. 영구 캐시/태그 편집/메일 수집 기능은 없습니다.
 
@@ -73,7 +73,7 @@ npm run build:experimental-naver
 
 일반 설치는 기존 수집 프로필 대신 분리된 테스트 프로필에서 진행합니다. 2026-11-06 실제 검증은 사용자의 명시적인 추가 지시에 따라 기존 로그인 세션을 한시적으로 사용하고 원래 서비스·확장을 복구한 예외입니다. 이를 일반 설치 절차로 적용하지 않습니다. 아래 자동 E2E의 합성 화면 검증과 실제 서버 검증 결과도 구분합니다. 임시 산출물은 사용 후 삭제할 수 있습니다.
 
-지원 범위는 HTTPS `mail.naver.com`의 정확한 `/v2/folders/0/all` 경로와 하나의 `.mail_list` 루트뿐입니다(쿼리 허용, hash 불허). 다른 화면으로 이동하면 배지와 상태를 지웁니다. Naver에서는 페이지 bridge, postMessage, 외부 서비스, 네트워크, 저장소를 사용하지 않습니다. 격리 world 안에서 현재 배치에 대해서만 합성 결과를 계산합니다. SN 마지막 숫자를 3으로 나눈 나머지가 1이면 `Mock · 합성 태그`, 2이면 매칭되지만 태그 없음, 0이면 미매칭입니다. 운영 DB·계정·실제 분류와 관계없는 테스트 규칙입니다. 식별 불가 행은 조회하지 않습니다. 매핑 캐시는 없으며 루트/URL 변경 시 현재 행 바인딩을 폐기합니다.
+지원 범위는 HTTPS `mail.naver.com`의 정확한 `/v2/folders/0`, `/v2/folders/0/all`, `/v2/folders/-1` 경로와 하나의 `.mail_list` 루트뿐입니다(쿼리 허용, hash 불허). 다른 화면으로 이동하면 배지와 상태를 지웁니다. 이 Mock 빌드는 페이지 bridge, postMessage, 외부 서비스, 네트워크, 저장소를 사용하지 않습니다. 격리 world 안에서 현재 배치에 대해서만 합성 결과를 계산합니다. SN 마지막 숫자를 3으로 나눈 나머지가 1이면 `Mock · 합성 태그`, 2이면 매칭되지만 태그 없음, 0이면 미매칭입니다. 운영 DB·계정·실제 분류와 관계없는 테스트 규칙입니다. 식별 불가 행은 조회하지 않습니다. 매핑 캐시는 없으며 루트/URL 변경 시 현재 행 바인딩을 폐기합니다.
 
 데모와 Naver는 렌더러, 최대 100개 고유 SN 배치 및 오래된 응답 차단을 공유합니다. 하위 변경 MutationObserver는 지원 루트 안에만 연결하고 Naver 루트 부모에는 직접 자식 교체만 관찰하며 CSS도 지원 루트 표시와 확장 소유 배지에 한정합니다. Chromium Navigation API와 150ms 컨텍스트 점검으로 URL/루트 교체를 감지합니다. 정기 점검은 컨텍스트가 달라질 때만 행을 다시 검색합니다. Naver 루트 제거/재삽입은 새 수명으로 취급합니다. 부모 자체가 교체되는 경우 정기 점검에서 새 루트를 감지합니다.
 
@@ -136,4 +136,33 @@ npm run test:e2e
 
 `essmt-live.spec.js`는 격리된 실제 ESSMT 서버가 있을 때만 실행하며 일반 실행에서는 명시적으로 skip합니다. #238의 합성 101(태그 `합성 HTTP 태그`), 102(빈 태그), 103(미매칭), 104(모호함) 데이터를 사용하세요. 로컬 환경변수 `ESSMT_TEST_ORIGIN`(HTTPS), `ESSMT_TEST_NAMESPACE`, `ESSMT_TEST_FULL_NAME`, `ESSMT_TEST_PASSWORD`를 설정해 `npm run test:e2e -- tests/e2e/essmt-live.spec.js`로 실행합니다. 실제 운영 서버/계정에는 실행하지 않습니다. 선택적으로 `ESSMT_TEST_UNGRANTED_NAME`은 같은 합성 비밀번호를 가진 무권한 직원을 검증합니다. 테스트용 공개 DER key(base64)를 `ESSMT_TEST_EXTENSION_KEY`로 주면 임시 확장 ID를 고정할 수 있습니다. 서버에서 해당 ID를 허용해야 합니다. 로그인 trace/screenshot/video를 저장하지 않습니다.
 
-실행 근거와 남은 범위는 [통합 검증 기록](../docs/research/essmt-integration-validation.md)을 참고하세요. 실제 네이버 화면에서는 위 실험 빌드의 로컬 Mock만 지원합니다.
+데모 경로의 실행 근거는 [통합 검증 기록](../docs/research/essmt-integration-validation.md)을 참고하세요.
+
+## 네이버 + 개발 ESSMT 빌드 (#9)
+
+| 설치 경로 | 대상 | 조회 |
+|---|---|---|
+| `extension/` | localhost 합성 데모 | Mock |
+| `npm run build:experimental-naver` 출력 | 네이버 받은메일함·전체메일 및 localhost 데모 | 로컬 Mock |
+| `dist/naver-essmt/` | 네이버 받은메일함·전체메일 | 기본 로컬 Mock, 옵션과 목록 확인 후 ESSMT |
+
+`dist/extension/`을 생성하는 #7 데모 ESSMT 명령도 계속 사용할 수 있습니다.
+
+아래 예시는 예약된 주소와 합성 namespace를 사용합니다. 승인된 격리 개발 서버의 HTTPS origin과 단일 namespace를 로컬 환경변수로 전달합니다. 하나의 네이버 테스트 계정만 사용하는 전용 브라우저 프로필을 준비하고, 서버 데이터셋이 그 계정에서 온 것인지 확인한 뒤 빌드합니다.
+
+```powershell
+$env:ESSMT_ORIGIN = 'https://essmt.example.test'
+$env:ESSMT_NAMESPACE = 'synthetic:naver:team'
+$env:ESSMT_NAVER_PROFILE_CONFIRMED = '1'
+npm run build:naver-essmt
+```
+
+1. 전용 프로필에 `dist/naver-essmt/`를 압축해제 확장으로 로드합니다. 기본 Mock이나 기존 실험용 확장과 같은 네이버 탭에서 함께 실행하지 않습니다.
+2. 이 빌드의 실제 확장 ID를 개발 ESSMT의 허용 origin에 추가하고, 서버 namespace와 직원 grant를 확인합니다. 기존 데모 확장의 ID를 재사용하지 않습니다.
+3. 같은 전용 프로필에서 개발 ESSMT에 테스트 직원 비밀번호로 로그인합니다. 이 창에는 받은메일함(`/v2/folders/0`, `/v2/folders/0/all`) 또는 전체메일(`/v2/folders/-1`) 탭을 하나만 열어 둡니다.
+4. 확장 옵션에서 ESSMT를 선택한 후, 현재 네이버 계정과 서버 데이터셋이 일치함을 확인하고 **현재 메일 목록과 데이터셋이 일치함을 확인**을 누릅니다. 같은 탭과 문서에서 받은메일함과 전체메일을 오가거나 목록 루트가 교체되면 확인을 유지하고 새 목록을 조회합니다. 새로고침, 지원하지 않는 화면으로 이동, 모드 전환 뒤에는 다시 확인합니다.
+5. 401이면 같은 프로필에서 ESSMT에 다시 로그인합니다. 탭으로 돌아오면 재조회하며, 즉시 다시 시도하려면 옵션에서 메일 목록 확인을 다시 누릅니다. 네이버 계정 전환 전에 Mock으로 전환하거나 확장을 비활성화합니다.
+
+Worker는 확장 ID, 최상위 Naver 문서, Chromium이 제공하는 현재 메일 목록 경로와 문서 ID를 검사합니다. 브라우저 세션 저장소에는 옵션에서 확인한 문서 ID를 보관합니다. URL·namespace·헤더는 신뢰된 빌드에서 결정합니다. 고정 namespace와 함께 전송하는 메일 데이터는 SN과 선택적 folder SN뿐입니다. 서버는 확장 origin, 직원 세션, grant, namespace를 각각 검사합니다. `folderSN`은 중복 해소에 쓰지 않습니다. 배지는 DOM에 표시되므로 해당 페이지의 스크립트에서도 읽을 수 있습니다.
+
+네이버 계정과 ESSMT 데이터셋의 대응은 운영자가 확인합니다. 현재 DOM 계약에는 신뢰할 수 있는 계정 식별자가 없으므로, 같은 문서에서 계정이 바뀌는 경우 자동 감지할 수 없습니다. 운영 연결 전에는 신뢰 가능한 계정 식별/검증과 승인된 테스트 데이터 대응을 확인해야 합니다. 상세 결과는 [#9 검증 기록](../docs/research/naver-essmt-validation.md)을 참고하세요.

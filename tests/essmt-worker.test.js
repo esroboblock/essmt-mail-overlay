@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import '../extension/identity.js';
 import '../extension/bridge.js';
+import '../extension/adapters.js';
 import '../extension/worker-core.js';
 const config = { origin: 'https://essmt.example.test', namespace: 'synthetic:naver:team', demoNamespace: 'demo:naver:account-a' };
 const sender = { id: 'extension-id', url: 'http://127.0.0.1:4173/', tab: { id: 1 } };
@@ -43,4 +44,23 @@ test('worker rejects malformed, partial and foreign results and generalizes netw
 
 test('build configuration requires an explicit namespace and canonical HTTPS origin', () => {
   for (const namespace of [undefined, null, 1, '', 'bad namespace']) assert.throws(() => globalThis.ESSMTOverlay.validateConfig({ ...config, namespace }), { code: 'NOT_CONFIGURED' });
+});
+
+test('Naver lookup requires the dedicated build, top-level inbox, and fixed Naver context', async () => {
+  const url = 'https://mail.naver.com/v2/folders/0/all';
+  const naver = { ...sender, url, frameId: 0, tab: { id: 1, url } };
+  const cfg = { ...config, naver: true };
+  const msg = { ...message(), context: { namespace: 'synthetic:naver', generation: 0 } };
+  assert.equal((await call(msg, naver, cfg)).namespace, 'synthetic:naver');
+  assert.equal((await call(msg, { ...naver, url: url.replace('/0/', '/1/') }, cfg)).namespace, 'synthetic:naver');
+  const noFetch = async () => assert.fail('unexpected request');
+  await assert.rejects(call(msg, naver, config, noFetch), { code: 'INVALID_SENDER' });
+  await assert.rejects(call(msg, sender, cfg, noFetch), { code: 'INVALID_SENDER' });
+  await assert.rejects(call(message(), naver, cfg, noFetch), { code: 'ACCOUNT_NOT_BOUND' });
+  for (const bad of [
+    { ...naver, frameId: 1 },
+    { ...naver, url: 'https://example.test/v2/folders/0/all' },
+    { ...naver, tab: { id: 1, url: url + '#other' } },
+    { ...naver, tab: { id: 1, url: url.replace('/0/', '/1/') } }
+  ]) await assert.rejects(call(msg, bad, cfg, noFetch), { code: 'INVALID_SENDER' });
 });

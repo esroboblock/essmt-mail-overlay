@@ -3,9 +3,16 @@ import assert from 'node:assert/strict';
 import '../extension/identity.js';
 import '../extension/adapters.js';
 const api = globalThis.ESSMTOverlay;
-test('Naver context is restricted to the observed exact inbox route', () => {
-  for (const href of ['https://mail.naver.com/v2/folders/0/all', 'https://mail.naver.com/v2/folders/0/all?page=2']) assert.equal(api.isNaverInbox(new URL(href)), true);
-  for (const href of ['https://mail.naver.com/v2/folders/1/all', 'https://mail.naver.com/v2/folders/0/all/', 'https://evil.test/v2/folders/0/all', 'http://mail.naver.com/v2/folders/0/all']) assert.equal(api.isNaverInbox(new URL(href)), false);
+test('Naver context recognizes only the supported mail list routes', () => {
+  assert.equal(api.isNaverMailList(new URL('https://mail.naver.com/v2/folders/0')), true);
+  assert.equal(api.isNaverMailList(new URL('https://mail.naver.com/v2/folders/0?page=2')), true);
+  assert.equal(api.isNaverMailList(new URL('https://mail.naver.com/v2/folders/-1')), true);
+  assert.equal(api.isNaverMailList(new URL('https://mail.naver.com/v2/folders/-1?page=2')), true);
+  for (const path of ['/v2/folders/0/', '/v2/folders/0/unread', '/v2/folders/0#mail', '/v2/folders/1', '/v2/folders/-1/all', '/v2/folders/-1#mail', '/v2/read/0/101']) {
+    assert.equal(api.isNaverMailList(new URL(path, 'https://mail.naver.com')), false);
+  }
+  for (const href of ['https://mail.naver.com/v2/folders/0/all', 'https://mail.naver.com/v2/folders/0/all?page=2']) assert.equal(api.isNaverMailList(new URL(href)), true);
+  for (const href of ['https://mail.naver.com/v2/folders/1/all', 'https://mail.naver.com/v2/folders/0/all/', 'https://evil.test/v2/folders/0/all', 'http://mail.naver.com/v2/folders/0/all']) assert.equal(api.isNaverMailList(new URL(href)), false);
 });
 test('local synthetic results distinguish tags, empty and unmatched without transport or retained mappings', async () => {
   const messages = ['101', '102', '103', '101'].map(mail_sn => ({ mail_sn, folder_sn: '0' }));
@@ -26,7 +33,7 @@ test('unrelated localhost does not attach any mutation observer', async () => {
   const { runInNewContext } = await import('node:vm');
   const observed = [], timers = [];
   const sandbox = {
-    ESSMTOverlay: { identifyRow() {}, requestTags() {}, isNaverInbox: () => false, createLocalMock: () => () => {} },
+    ESSMTOverlay: { identifyRow() {}, requestTags() {}, isNaverMailList: () => false, createLocalMock: () => () => {} },
     MutationObserver: class { observe(target) { observed.push(target); } disconnect() {} },
     location: new URL('http://localhost:4173/unrelated'),
     document: { querySelector: () => null },

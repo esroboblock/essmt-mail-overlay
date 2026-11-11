@@ -21,6 +21,17 @@ test('local build grants one HTTPS host and keeps source installation Mock-only'
     assert.match(await readFile(path.join(dir, 'dist/extension/config.js'), 'utf8'), /synthetic:naver:team/);
     const source = JSON.parse(await readFile(path.join(dir, 'extension/manifest.json')));
     assert.equal(source.host_permissions, undefined);
+    assert.throws(() => execFileSync(process.execPath, [path.join(dir, 'scripts/build-extension.mjs'), '--naver'], {
+      env: { ...env, ESSMT_NAVER_PROFILE_CONFIRMED: '' }, stdio: 'pipe'
+    }));
+    execFileSync(process.execPath, [path.join(dir, 'scripts/build-extension.mjs'), '--naver'], {
+      env: { ...env, ESSMT_NAVER_PROFILE_CONFIRMED: '1' }
+    });
+    const naver = JSON.parse(await readFile(path.join(dir, 'dist/naver-essmt/manifest.json')));
+    assert.deepEqual(naver.content_scripts.flatMap(script => script.matches), ['https://mail.naver.com/*']);
+    assert.deepEqual(naver.host_permissions, ['https://essmt.example.test/*']);
+    assert.deepEqual(naver.permissions, ['storage']);
+    assert.deepEqual(JSON.parse(await readFile(path.join(dir, 'dist/extension/manifest.json'))), manifest);
     assert.throws(() => execFileSync(process.execPath, [path.join(dir, 'scripts/build-extension.mjs')], { env: { ...env, ESSMT_ORIGIN: 'http://essmt.example.test' }, stdio: 'pipe' }));
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

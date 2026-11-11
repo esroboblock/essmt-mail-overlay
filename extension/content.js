@@ -1,9 +1,12 @@
 (() => {
-  const { identifyRow, requestTags, requestESSMT, isNaverInbox, createLocalMock } = globalThis.ESSMTOverlay;
+  const { identifyRow, requestTags, requestESSMT, isNaverMailList, createLocalMock, naverContext, validESSMTSerial } = globalThis.ESSMTOverlay;
   const isDemo = ['http://127.0.0.1', 'http://localhost'].includes(location.origin.replace(/:\d+$/, ''));
-  const canUseESSMT = isDemo && location.port === '4173' && Boolean(globalThis.chrome?.storage);
-  if (!isDemo && location.origin !== 'https://mail.naver.com') return;
+  const isNaver = location.origin === 'https://mail.naver.com';
+  const canUseESSMT = (isNaver || (isDemo && location.port === '4173')) && Boolean(globalThis.chrome?.storage);
+  if (!isDemo && !isNaver) return;
   let mode = canUseESSMT ? null : 'mock';
+  let confirmedNaverDocument = false;
+  let confirmationEpoch = 0;
   const rows = new Map();
   const localLookup = createLocalMock();
   let observedRoot = null;
@@ -36,10 +39,10 @@
   }
   function forget(row) { write(() => clear(row)); rows.delete(row); }
   function readContext() {
-    if (isNaverInbox(location)) {
+    if (mode && isNaverMailList(location)) {
       const lists = document.querySelectorAll('.mail_list');
-      if (lists.length !== 1) return null;
-      return { adapter: 'naver', root: lists[0], namespace: 'synthetic:naver', generation: `${location.href}:${rootLifetime}` };
+      if (lists.length !== 1 || (mode === 'essmt' && !confirmedNaverDocument)) return null;
+      return { adapter: 'naver', root: lists[0], namespace: naverContext, generation: rootLifetime, url: location.href };
     }
     if (!isDemo || !mode) return null;
     const root = document.querySelector('#demo-root');
@@ -49,11 +52,17 @@
     if (!['demo:naver:account-a', 'demo:naver:account-b'].includes(namespace) || !Number.isSafeInteger(generation) || generation < 0) return null;
     return { adapter: 'demo', root, namespace, generation };
   }
-  const sameContext = (a, b) => a?.namespace === b?.namespace && a?.generation === b?.generation && a?.root === b?.root;
+  const sameContext = (a, b) => a?.namespace === b?.namespace && a?.generation === b?.generation && a?.root === b?.root && a?.url === b?.url;
   const sameIdentity = (a, b) => a?.mail_sn === b?.mail_sn && a?.folder_sn === b?.folder_sn;
+  function readIdentity(row) {
+    const identity = identifyRow(row);
+    if (mode === 'essmt' && identity &&
+        (!validESSMTSerial(identity.mail_sn) || !(identity.folder_sn === '0' || validESSMTSerial(identity.folder_sn)))) return null;
+    return identity;
+  }
   function current(row, binding, captured) {
     return row.isConnected && rows.get(row) === binding && sameContext(captured, readContext()) &&
-      sameIdentity(binding.identity, identifyRow(row)) && captured.root.contains(row);
+      sameIdentity(binding.identity, readIdentity(row)) && captured.root.contains(row);
   }
   function paint(row, binding) {
     write(() => {
@@ -80,6 +89,7 @@
   }
   function scan() {
     const next = readContext();
+    if (confirmedNaverDocument && !isNaverMailList(location)) confirmedNaverDocument = false;
     if (!sameContext(context, next)) {
       controller?.abort();
       for (const row of rows.keys()) forget(row);
@@ -103,7 +113,7 @@
     const visible = new Set(context.root.querySelectorAll(context.adapter === 'demo' ? '.mail_list .mail_item' : '.mail_item'));
     for (const row of rows.keys()) if (!visible.has(row)) forget(row);
     for (const row of visible) {
-      const identity = identifyRow(row);
+      const identity = readIdentity(row);
       let binding = rows.get(row);
       if (!binding || !sameIdentity(identity, binding.identity)) {
         binding = { identity, status: identity ? 'loading' : 'unidentified', requested: false };
@@ -133,7 +143,7 @@
     try {
       const { namespace, generation } = captured;
       const requestOptions = { signal: active.signal };
-      const results = captured.adapter === 'naver'
+      const results = captured.adapter === 'naver' && mode === 'mock'
         ? await localLookup(captured, messages, requestOptions)
         : await (mode === 'essmt' ? requestESSMT : requestTags)(window, { namespace, generation }, messages, requestOptions);
       for (const [row, binding] of batch) {
@@ -157,7 +167,12 @@
   }
   if (canUseESSMT) {
     function setMode(value) {
-      mode = value === 'essmt' ? 'essmt' : 'mock';
+      const next = value === 'essmt' ? 'essmt' : 'mock';
+      if (next !== mode) {
+        confirmedNaverDocument = false;
+        confirmationEpoch++;
+      }
+      mode = next;
       controller?.abort();
       for (const row of rows.keys()) forget(row);
       context = null;
@@ -176,11 +191,51 @@
     chrome.runtime.sendMessage({ type: 'essmt:settings' }).then(reply => {
       if (!settingsChanged) setMode(reply?.mode);
     }).catch(() => { if (!settingsChanged) setMode('mock'); });
+    if (isNaver) window.addEventListener('pagehide', () => {
+      confirmedNaverDocument = false;
+      confirmationEpoch++;
+      scan();
+    });
+    if (isNaver) chrome.runtime.onMessage.addListener((message, sender, reply) => {
+      if (sender.id !== chrome.runtime.id || mode !== 'essmt' || !isNaverMailList(location)) return false;
+      if (message?.type === 'essmt:inbox-status') {
+        chrome.runtime.sendMessage({ type: 'essmt:inbox-document' }).then(reply, () => reply(null));
+        return true;
+      }
+      if (message?.type !== 'essmt:confirm-inbox') return false;
+      const lists = document.querySelectorAll('.mail_list');
+      if (lists.length !== 1) return false;
+      const [root] = lists;
+      const { pathname } = location;
+      const lifetime = rootLifetime;
+      const epoch = confirmationEpoch;
+      confirmedNaverDocument = false;
+      scan();
+      const removedRoot = record => [...record.removedNodes].some(node => node.contains(root));
+      const pendingRoot = new MutationObserver(records => {
+        if (records.some(removedRoot)) confirmationEpoch++;
+      });
+      pendingRoot.observe(document, { subtree: true, childList: true });
+      chrome.runtime.sendMessage({ type: 'essmt:confirm-document' }).then(result => {
+        if (!result?.ok || epoch !== confirmationEpoch || pendingRoot.takeRecords().some(removedRoot) ||
+            mode !== 'essmt' || !isNaverMailList(location) || location.pathname !== pathname || rootLifetime !== lifetime ||
+            !root.isConnected || document.querySelectorAll('.mail_list').length !== 1 ||
+            document.querySelector('.mail_list') !== root) return reply({ ok: false });
+        confirmedNaverDocument = true;
+        scan();
+        reply({ ok: true });
+      }).catch(() => reply({ ok: false })).finally(() => pendingRoot.disconnect());
+      return true;
+    });
   }
   // Chromium Navigation API observes pushState/replaceState in the page world too.
-  window.navigation?.addEventListener('currententrychange', scan);
-  window.addEventListener('popstate', scan);
-  window.addEventListener('hashchange', scan);
+  function navigationChanged() {
+    confirmationEpoch++;
+    scan();
+  }
+  window.navigation?.addEventListener('currententrychange', navigationChanged);
+  window.addEventListener('popstate', navigationChanged);
+  window.addEventListener('hashchange', navigationChanged);
   window.addEventListener('essmt-demo:contextchange', scan);
   window.addEventListener('essmt-demo:ready', scan);
   // Root-scoped observation plus a small lifecycle poll handles SPA route/root replacement

@@ -12,5 +12,7 @@
     if (links.length !== 1 || classes.length !== 1) return null;
     return identifyMail(links[0].getAttribute('href'), classes[0].slice(5));
   }
-  globalThis.ESSMTOverlay = { identifyMail, identifyRow };
+  const validESSMTSerial = value => typeof value === 'string' && /^[1-9][0-9]*$/.test(value) &&
+    value.length <= 10 && Number(value) <= 2147483647;
+  globalThis.ESSMTOverlay = { identifyMail, identifyRow, validESSMTSerial };
 })();
