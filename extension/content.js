@@ -5,6 +5,7 @@
   const canUseESSMT = (isNaver || (isDemo && location.port === '4173')) && Boolean(globalThis.chrome?.storage);
   if (!isDemo && !isNaver) return;
   let mode = canUseESSMT ? null : 'mock';
+  let naverName = null;
   let confirmedNaverDocument = false;
   let confirmationEpoch = 0;
   const rows = new Map();
@@ -38,10 +39,36 @@
     row.removeAttribute('data-essmt-error');
   }
   function forget(row) { write(() => clear(row)); rows.delete(row); }
+  function readNaverName() {
+    const names = document.querySelectorAll('#gnb_name1');
+    const text = names[0]?.textContent.trim();
+    return names.length === 1 && text ? { node: names[0], text } : null;
+  }
+  function clearNaverConfirmation() {
+    confirmedNaverDocument = false;
+    naverName = null;
+    nameObserver.disconnect();
+    confirmationEpoch++;
+  }
+  function nameStillMatches(records = []) {
+    if (!naverName) return false;
+    const { node, text } = naverName;
+    const currentName = readNaverName();
+    if (currentName?.node === node && currentName.text === text &&
+        !records.some(record => record.type === 'attributes'
+          ? record.target === node || record.oldValue === 'gnb_name1'
+          : node.contains(record.target) || [...record.removedNodes].some(removed =>
+            removed.contains(node) || removed.id === 'gnb_name1' || removed.querySelector?.('#gnb_name1')))) return true;
+    clearNaverConfirmation();
+    queueMicrotask(scan);
+    return false;
+  }
+  const nameObserver = new MutationObserver(records => { nameStillMatches(records); });
   function readContext() {
     if (mode && isNaverMailList(location)) {
       const lists = document.querySelectorAll('.mail_list');
-      if (lists.length !== 1 || (mode === 'essmt' && !confirmedNaverDocument)) return null;
+      if (lists.length !== 1 || (mode === 'essmt' &&
+          (!confirmedNaverDocument || !nameStillMatches(nameObserver.takeRecords())))) return null;
       return { adapter: 'naver', root: lists[0], namespace: naverContext, generation: rootLifetime, url: location.href };
     }
     if (!isDemo || !mode) return null;
@@ -89,7 +116,7 @@
   }
   function scan() {
     const next = readContext();
-    if (confirmedNaverDocument && !isNaverMailList(location)) confirmedNaverDocument = false;
+    if (naverName && !isNaverMailList(location)) clearNaverConfirmation();
     if (!sameContext(context, next)) {
       controller?.abort();
       for (const row of rows.keys()) forget(row);
@@ -129,7 +156,7 @@
     void pump();
   }
   async function pump() {
-    if (running || !context) return;
+    if (running || !context || !sameContext(context, readContext())) return;
     const pending = [...rows].filter(([, binding]) => binding.identity && !binding.requested);
     if (!pending.length) return;
     const messages = [...new Map(pending.map(([, b]) => [b.identity.mail_sn, b.identity])).values()].slice(0, 100);
@@ -168,10 +195,7 @@
   if (canUseESSMT) {
     function setMode(value) {
       const next = value === 'essmt' ? 'essmt' : 'mock';
-      if (next !== mode) {
-        confirmedNaverDocument = false;
-        confirmationEpoch++;
-      }
+      if (next !== mode) clearNaverConfirmation();
       mode = next;
       controller?.abort();
       for (const row of rows.keys()) forget(row);
@@ -192,8 +216,7 @@
       if (!settingsChanged) setMode(reply?.mode);
     }).catch(() => { if (!settingsChanged) setMode('mock'); });
     if (isNaver) window.addEventListener('pagehide', () => {
-      confirmedNaverDocument = false;
-      confirmationEpoch++;
+      clearNaverConfirmation();
       scan();
     });
     if (isNaver) chrome.runtime.onMessage.addListener((message, sender, reply) => {
@@ -204,12 +227,18 @@
       }
       if (message?.type !== 'essmt:confirm-inbox') return false;
       const lists = document.querySelectorAll('.mail_list');
-      if (lists.length !== 1) return false;
+      const name = readNaverName();
+      if (lists.length !== 1 || !name) return false;
+      clearNaverConfirmation();
+      naverName = name;
+      nameObserver.observe(document, {
+        subtree: true, childList: true, characterData: true,
+        attributes: true, attributeFilter: ['id'], attributeOldValue: true
+      });
       const [root] = lists;
       const { pathname } = location;
       const lifetime = rootLifetime;
       const epoch = confirmationEpoch;
-      confirmedNaverDocument = false;
       scan();
       const removedRoot = record => [...record.removedNodes].some(node => node.contains(root));
       const pendingRoot = new MutationObserver(records => {
@@ -217,14 +246,18 @@
       });
       pendingRoot.observe(document, { subtree: true, childList: true });
       chrome.runtime.sendMessage({ type: 'essmt:confirm-document' }).then(result => {
-        if (!result?.ok || epoch !== confirmationEpoch || pendingRoot.takeRecords().some(removedRoot) ||
+        if (!result?.ok || epoch !== confirmationEpoch || !nameStillMatches(nameObserver.takeRecords()) ||
+            pendingRoot.takeRecords().some(removedRoot) ||
             mode !== 'essmt' || !isNaverMailList(location) || location.pathname !== pathname || rootLifetime !== lifetime ||
             !root.isConnected || document.querySelectorAll('.mail_list').length !== 1 ||
             document.querySelector('.mail_list') !== root) return reply({ ok: false });
         confirmedNaverDocument = true;
         scan();
         reply({ ok: true });
-      }).catch(() => reply({ ok: false })).finally(() => pendingRoot.disconnect());
+      }).catch(() => reply({ ok: false })).finally(() => {
+        pendingRoot.disconnect();
+        if (naverName === name && !confirmedNaverDocument) clearNaverConfirmation();
+      });
       return true;
     });
   }

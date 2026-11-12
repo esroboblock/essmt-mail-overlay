@@ -6,7 +6,7 @@ chrome.storage.local.get('mode').then(({ mode }) => { select.value = mode === 'e
 if (!globalThis.ESSMT_CONFIG) status.textContent = '현재 확장은 Mock 전용입니다. 연결 설정을 넣어 로컬 확장을 생성하세요.';
 if (globalThis.ESSMT_CONFIG?.naver) {
   document.querySelector('#binding-help').textContent =
-    '전용 프로필에서 창당 받은메일함 또는 전체메일 탭을 하나만 열고 네이버 계정과 ESSMT 데이터셋이 일치할 때만 확인하세요. 같은 탭에서 받은메일함과 전체메일을 오갈 때는 확인을 유지합니다.';
+    '이 창에 받은메일함 또는 전체메일 탭을 하나만 열고 네이버 계정과 ESSMT 데이터셋이 일치할 때만 확인하세요. 표시 이름이 바뀌거나 사라지면 조회가 중단됩니다. 계정을 바꾼 뒤에는 표시 이름이 같아도 다시 확인하세요.';
   confirmInbox.hidden = false;
   confirmInbox.addEventListener('click', async () => {
     if (select.value !== 'essmt') {
@@ -16,7 +16,7 @@ if (globalThis.ESSMT_CONFIG?.naver) {
     confirmInbox.disabled = true;
     status.textContent = '현재 메일 목록을 확인하는 중입니다.';
     const result = await chrome.runtime.sendMessage({ type: 'essmt:confirm-inbox' }).catch(() => null);
-    status.textContent = result?.ok ? '현재 메일 목록의 연결을 확인했습니다.' : '이 창에 받은메일함 또는 전체메일 탭을 하나만 열고 다시 확인하세요.';
+    status.textContent = result?.ok ? '현재 메일 목록의 연결을 확인했습니다.' : '이 창에 받은메일함 또는 전체메일 탭을 하나만 열고 네이버 표시 이름이 보이는지 확인한 뒤 다시 시도하세요.';
     confirmInbox.disabled = false;
   });
 }

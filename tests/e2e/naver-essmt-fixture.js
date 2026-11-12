@@ -9,7 +9,7 @@ export function mountNaverFixture(context) {
   return context.route('https://mail.naver.com/**', route => {
     const isAllMail = new URL(route.request().url()).pathname === '/v2/folders/-1';
     const list = isAllMail ? rows.replace('/v2/popup/read/0/101', '/v2/popup/read/42/101') : rows;
-    return route.fulfill({ contentType: 'text/html', body: `<!doctype html><ul class="mail_list">${list}</ul>` });
+    return route.fulfill({ contentType: 'text/html', body: `<!doctype html><span id="gnb_name1">Synthetic Account A</span><ul class="mail_list">${list}</ul>` });
   });
 }
 

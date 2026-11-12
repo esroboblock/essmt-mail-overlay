@@ -55,7 +55,7 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
       await expect(extraBadges).toHaveCount(0);
       expect(requests).toHaveLength(0);
       await options.locator('#confirm-inbox').click();
-      await expect(options.getByRole('status')).toHaveText('이 창에 받은메일함 또는 전체메일 탭을 하나만 열고 다시 확인하세요.');
+      await expect(options.getByRole('status')).toHaveText('이 창에 받은메일함 또는 전체메일 탭을 하나만 열고 네이버 표시 이름이 보이는지 확인한 뒤 다시 시도하세요.');
       expect(requests).toHaveLength(0);
       await extraInbox.close();
       await worker.evaluate(() => {
@@ -73,7 +73,7 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
         history.pushState({}, '', url);
       }, inbox);
       await worker.evaluate(() => globalThis.releaseConfirmation());
-      await expect(options.getByRole('status')).toHaveText('이 창에 받은메일함 또는 전체메일 탭을 하나만 열고 다시 확인하세요.');
+      await expect(options.getByRole('status')).toHaveText('이 창에 받은메일함 또는 전체메일 탭을 하나만 열고 네이버 표시 이름이 보이는지 확인한 뒤 다시 시도하세요.');
       expect(requests).toHaveLength(0);
       const confirm = async () => {
         await options.locator('#confirm-inbox').click();
@@ -95,6 +95,32 @@ for (const naver of [false, true]) test(`${naver ? 'Naver fixture' : 'Demo'} ESS
       }
       await first.getByRole('checkbox').check();
       await expect(first.getByRole('checkbox')).toBeChecked();
+      delay = 500;
+      const beforeAccountChange = requests.length;
+      await refresh();
+      await expect.poll(() => requests.length).toBe(beforeAccountChange + 1);
+      await page.locator('#gnb_name1').evaluate(name => {
+        name.textContent = 'Synthetic Account B';
+        name.textContent = 'Synthetic Account A';
+      });
+      await expect(first).not.toHaveAttribute('data-essmt-state', 'loading');
+      await refresh();
+      await page.waitForTimeout(600);
+      await expect(page.locator('[data-essmt-state]')).toHaveCount(0);
+      await expect(badges).toHaveCount(0);
+      expect(requests).toHaveLength(beforeAccountChange + 1);
+      delay = 0;
+      await confirm();
+      await expect(badges).toHaveText('HTTPS 합성 태그');
+      await page.locator('#gnb_name1').evaluate(name => { name.textContent = ''; });
+      await expect(badges).toHaveCount(0);
+      const beforeMissingName = requests.length;
+      await options.locator('#confirm-inbox').click();
+      await expect(options.getByRole('status')).toContainText('표시 이름');
+      expect(requests).toHaveLength(beforeMissingName);
+      await page.locator('#gnb_name1').evaluate(name => { name.textContent = 'Synthetic Account A'; });
+      await confirm();
+      await expect(badges).toHaveText('HTTPS 합성 태그');
       denied = true;
       await refresh();
       await expect(first).toHaveAttribute('data-essmt-error', 'HTTP_403');

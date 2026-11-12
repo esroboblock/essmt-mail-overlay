@@ -19,7 +19,7 @@ export async function buildExtension({ origin, namespace, naver = false, destina
   manifest.host_permissions = [config.origin + '/*'];
   if (naver) {
     manifest.name = 'ESSMT Mail Overlay — Naver ESSMT Development';
-    manifest.description = 'Read-only Naver inbox overlay for a dedicated ESSMT development profile.';
+    manifest.description = 'Read-only Naver mail list overlay for ESSMT development.';
     manifest.content_scripts[0].matches = ['https://mail.naver.com/*'];
   }
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
@@ -30,7 +30,7 @@ export async function buildExtension({ origin, namespace, naver = false, destina
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const naver = process.argv[2] === '--naver';
   if (naver && process.env.ESSMT_NAVER_PROFILE_CONFIRMED !== '1') {
-    throw new Error('Confirm the dedicated Naver profile and ESSMT dataset binding with ESSMT_NAVER_PROFILE_CONFIRMED=1');
+    throw new Error('Confirm the Naver account and ESSMT dataset match with ESSMT_NAVER_PROFILE_CONFIRMED=1');
   }
   const output = await buildExtension({ origin: process.env.ESSMT_ORIGIN, namespace: process.env.ESSMT_NAMESPACE, naver });
   console.log('Configured extension created in ' + output);
