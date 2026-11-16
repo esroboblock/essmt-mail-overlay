@@ -170,3 +170,31 @@ Worker는 확장 ID, 최상위 Naver 문서, Chromium이 제공하는 현재 메
 사용자가 네이버 계정과 ESSMT 데이터셋의 일치를 확인하면, 확장은 현재 탭의 `#gnb_name1` 요소와 표시 이름을 메모리에서만 감시합니다. 이름이 바뀌거나 비거나 요소가 교체·중복되면 배지를 제거하고 조회를 중단합니다. 원래 이름으로 돌아와도 옵션에서 다시 확인해야 합니다. 같은 요소와 이름이 유지되는 동안에는 지원 목록 사이에서 확인을 유지합니다.
 
 표시 이름은 계정 전환을 감지하는 단서입니다. 두 계정에 동일한 이름이 표시되고 해당 요소에 변경이 없으면 감지할 수 없습니다. 계정을 바꾸기 전에는 옵션에서 Mock으로 전환하고, 새 계정이 데이터셋과 일치하는 경우에만 ESSMT 모드에서 다시 확인하세요. 상세 정책과 검증 범위는 [네이버·ESSMT 검증 기록](../docs/research/naver-essmt-validation.md)을 참고하세요.
+
+## 네이버 상세 공유 태그 (#13)
+
+네이버 ESSMT 빌드에서 같은 탭·문서의 지원 목록을 거쳐 전체메일 상세(`/v2/read/-1/{mailSN}`)를 엽니다. 패널이 나타나면 **이 화면의 네이버 계정과 ESSMT 데이터셋 일치 확인**을 누릅니다. 상세는 자체 확인을 사용합니다. 이전·다음 이동 때 이전 콘텐츠가 남아 있으면 패널을 제거하고, 새 콘텐츠 노드를 확인한 뒤 다시 조회합니다. 새로고침·직접 진입·팝업·iframe에서의 상세는 지원하지 않습니다. 실제 네이버 패널은 읽기 전용입니다.
+
+편집은 합성 개발용 `--detail-fixture` 빌드에서 사용할 수 있습니다. 이 빌드는 화면을 `http://localhost:4173`으로 제한하고, 루프백 HTTPS와 `synthetic:`으로 시작하는 namespace만 받습니다. ESSMT 옵션 선택과 상세 계정 확인 뒤 현재 태그, 최근 추천, 기존 태그 검색과 선택, 새 이름 생성·부착, 해제를 사용할 수 있습니다. 검색·생성 입력은 Enter로 제출할 수 있습니다.
+
+```sh
+ESSMT_ORIGIN=https://localhost:8443 ESSMT_NAMESPACE=synthetic:naver:team \
+  node scripts/build-extension.mjs --detail-fixture
+```
+
+`dist/detail-fixture/`를 로드하고 해당 확장의 Origin, 합성 직원 읽기/쓰기 grant 및 쓰기 플래그를 격리 서버에서 설정합니다. 합성 DOM은 [브라우저 테스트](../tests/e2e/detail.spec.js)의 라우팅 fixture를 사용합니다. 기본 Mock 및 기존 localhost ESSMT 빌드는 상세 편집 없이 사용할 수 있습니다.
+
+### 실제 ESSMT 계약 테스트 재현
+
+병합된 ESSMT의 별도 개발 체크아웃에서 개발 의존성과 Chromium을 설치하고 Docker를 실행합니다. 아래 명령은 ESSMT의 테스트 fixture가 새 PostgreSQL DB와 TLS 서버를 만들도록 합니다. 초기 환경에는 루프백의 연결 불가 주소를 지정합니다. `OVERLAY_CHECKOUT`에는 이 저장소의 절대 경로를 넣습니다.
+
+```sh
+cp "$OVERLAY_CHECKOUT/tests/contract/test_essmt_detail.py" tests/integration_pg/test_installed_overlay.py
+SECRET_KEY=synthetic-test-only \
+DATABASE_URL=postgresql://synthetic:synthetic@127.0.0.1:1/synthetic \
+DIRECT_DATABASE_URL=postgresql://synthetic:synthetic@127.0.0.1:1/synthetic \
+OVERLAY_CHECKOUT="$OVERLAY_CHECKOUT" \
+  uv run pytest -q tests/integration_pg/test_installed_overlay.py
+```
+
+[실화면 근거와 쓰기 활성화 조건](../docs/research/naver-detail-tags-validation.md)을 참고하세요.
