@@ -8,7 +8,9 @@
       const url = new URL(config.origin);
       if (url.protocol !== 'https:' || url.origin !== config.origin || url.username || url.password ||
           typeof config.namespace !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9:._-]{0,99}$/.test(config.namespace) ||
-          (config.naver !== undefined && config.naver !== true) || config.demoNamespace !== 'demo:naver:account-a') throw Error();
+          (config.naver !== undefined && config.naver !== true) || config.demoNamespace !== 'demo:naver:account-a' ||
+          (config.detailFixture !== undefined && (config.detailFixture !== true || config.naver ||
+            !['localhost', '127.0.0.1'].includes(url.hostname) || !config.namespace.startsWith('synthetic:')))) throw Error();
       return config;
     } catch { throw fail('NOT_CONFIGURED'); }
   }
@@ -33,21 +35,25 @@
       if (!keys(item, ['mail_sn', 'folder_sn']) || !validESSMTSerial(item.mail_sn) ||
           !(item.folder_sn == null || ['-1', '0'].includes(item.folder_sn) || validESSMTSerial(item.folder_sn))) throw fail('INVALID_REQUEST');
     }
-    let response;
+    const result = await postOverlay(config, 'lookup', { messages: message.messages }, fetcher);
     try {
-      response = await fetcher(config.origin + '/api/browser-overlay/email-tags/lookup', {
-        method: 'POST', credentials: 'include', redirect: 'error', cache: 'no-store',
-        headers: { 'Content-Type': 'application/json', 'X-ESSMT-Overlay': '1' },
-        body: JSON.stringify({ namespace: config.namespace, messages: message.messages }),
-        signal: AbortSignal.timeout(4500)
-      });
-    } catch (error) { throw fail(error.name === 'TimeoutError' ? 'NETWORK_TIMEOUT' : 'NETWORK_ERROR'); }
-    if (!response.ok) throw fail(`HTTP_${response.status}`);
-    try {
-      const result = await response.json();
       globalThis.ESSMTOverlay.validateResults(result, { namespace: config.namespace }, message.messages);
       return { schema_version: 1, namespace: message.context.namespace, results: result.results };
     } catch { throw fail('INVALID_RESPONSE'); }
   }
-  Object.assign(globalThis.ESSMTOverlay, { validateConfig, validSender, lookupESSMT });
+  async function postOverlay(config, action, payload, fetcher) {
+    let response;
+    try {
+      response = await fetcher(config.origin + '/api/browser-overlay/email-tags/' + action, {
+        method: 'POST', credentials: 'include', redirect: 'error', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json', 'X-ESSMT-Overlay': '1' },
+        body: JSON.stringify({ namespace: config.namespace, ...payload }),
+        signal: AbortSignal.timeout(4500)
+      });
+    } catch (error) { throw fail(error.name === 'TimeoutError' ? 'NETWORK_TIMEOUT' : 'NETWORK_ERROR'); }
+    if (!response.ok) throw fail(`HTTP_${response.status}`);
+    try { return await response.json(); }
+    catch { throw fail('INVALID_RESPONSE'); }
+  }
+  Object.assign(globalThis.ESSMTOverlay, { validateConfig, validSender, lookupESSMT, postOverlay });
 })();

@@ -1,6 +1,7 @@
-importScripts('identity.js', 'bridge.js', 'adapters.js', 'worker-core.js', 'config.js');
+importScripts('identity.js', 'bridge.js', 'adapters.js', 'worker-core.js', 'detail-core.js', 'detail-worker.js', 'config.js');
 const { validSender, lookupESSMT } = globalThis.ESSMTOverlay;
 const config = globalThis.ESSMT_CONFIG;
+globalThis.ESSMTOverlay.installDetailWorker(config);
 const pendingConfirmations = new Map();
 const bindingKey = tabId => `naverDocument:${tabId}`;
 if (config?.naver) chrome.tabs.onRemoved.addListener(tabId => {
@@ -42,7 +43,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   void (async () => {
     try {
       const { mode = 'mock' } = await chrome.storage.local.get('mode');
-      if (type === 'essmt:settings') return { ok: true, mode: mode === 'essmt' ? 'essmt' : 'mock' };
+      if (type === 'essmt:settings') return { ok: true, mode: mode === 'essmt' ? 'essmt' : 'mock', ...(config?.detailFixture ? { detailFixture: true } : {}) };
       if (mode !== 'essmt') return { ok: false, error: { code: 'MODE_CHANGED' } };
       if (type === 'essmt:inbox-document') return config?.naver ? sender.documentId : null;
       if (type === 'essmt:confirm-document') {

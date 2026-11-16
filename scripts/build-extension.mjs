@@ -7,11 +7,11 @@ import '../extension/adapters.js';
 import '../extension/worker-core.js';
 import path from 'node:path';
 
-export async function buildExtension({ origin, namespace, naver = false, destination } = {}) {
-  const config = { origin, namespace, demoNamespace: 'demo:naver:account-a', ...(naver ? { naver: true } : {}) };
+export async function buildExtension({ origin, namespace, naver = false, detailFixture = false, destination } = {}) {
+  const config = { origin, namespace, demoNamespace: 'demo:naver:account-a', ...(naver ? { naver: true } : {}), ...(detailFixture ? { detailFixture: true } : {}) };
   globalThis.ESSMTOverlay.validateConfig(config);
   const root = new URL('../', import.meta.url);
-  const output = destination ?? fileURLToPath(new URL(naver ? 'dist/naver-essmt/' : 'dist/extension/', root));
+  const output = destination ?? fileURLToPath(new URL(naver ? 'dist/naver-essmt/' : detailFixture ? 'dist/detail-fixture/' : 'dist/extension/', root));
   await mkdir(output, { recursive: true });
   await cp(new URL('extension/', root), output, { recursive: true });
   const manifestPath = path.join(output, 'manifest.json');
@@ -19,8 +19,16 @@ export async function buildExtension({ origin, namespace, naver = false, destina
   manifest.host_permissions = [config.origin + '/*'];
   if (naver) {
     manifest.name = 'ESSMT Mail Overlay — Naver ESSMT Development';
-    manifest.description = 'Read-only Naver mail list overlay for ESSMT development.';
+    manifest.description = 'Read-only Naver mail list and detail overlay for ESSMT development.';
     manifest.content_scripts[0].matches = ['https://mail.naver.com/*'];
+  }
+  if (naver || detailFixture) {
+    manifest.permissions.push('webNavigation');
+    manifest.content_scripts[0].js.push('detail-core.js', 'detail-content.js');
+  }
+  if (detailFixture) {
+    manifest.name = 'ESSMT Mail Overlay — Synthetic Detail';
+    manifest.content_scripts[0].matches = ['http://localhost/*'];
   }
   await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
   await writeFile(path.join(output, 'config.js'), 'globalThis.ESSMT_CONFIG = ' + JSON.stringify(config) + ';\n');
@@ -29,9 +37,10 @@ export async function buildExtension({ origin, namespace, naver = false, destina
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const naver = process.argv[2] === '--naver';
+  const detailFixture = process.argv[2] === '--detail-fixture';
   if (naver && process.env.ESSMT_NAVER_PROFILE_CONFIRMED !== '1') {
     throw new Error('Confirm the Naver account and ESSMT dataset match with ESSMT_NAVER_PROFILE_CONFIRMED=1');
   }
-  const output = await buildExtension({ origin: process.env.ESSMT_ORIGIN, namespace: process.env.ESSMT_NAMESPACE, naver });
+  const output = await buildExtension({ origin: process.env.ESSMT_ORIGIN, namespace: process.env.ESSMT_NAMESPACE, naver, detailFixture });
   console.log('Configured extension created in ' + output);
 }
